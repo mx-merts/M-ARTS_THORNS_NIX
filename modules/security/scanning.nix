@@ -1,23 +1,25 @@
 { config, lib, pkgs, ... }:
 {
-  # AMAC: ClamAV ve rkhunter OTOMATIK calisir ama sadece PERIYODIK ARKA PLAN
-  # TARAMASI olarak - gercek-zamanli (on-access) degil, hicbir dosya acilisini
+  # AMAC: ClamAV, chkrootkit, Lynis OTOMATIK calisir ama sadece PERIYODIK
+  # ARKA PLAN TARAMASI olarak - gercek-zamanli degil, hicbir dosya acilisini
   # yavaslatmaz, hicbir uygulamayi etkilemez. Sonuc sadece journal'a yazilir,
   # otomatik silme/karantina YOK.
+  #
+  # NOT: rkhunter nixpkgs 26.05'te kaldirildi (upstream'de 2018'den beri
+  # guncellenmiyordu). Yerine chkrootkit + Lynis kullaniyoruz, ikisi de
+  # aktif gelistiriliyor.
 
   environment.systemPackages = with pkgs; [
     clamav
-    rkhunter
     chkrootkit
+    lynis
   ];
 
-  # ClamAV imza veritabani gunluk otomatik guncellenir
   services.clamav = {
     updater.enable = true;
     updater.interval = "daily";
   };
 
-  # ClamAV tam tarama - haftalik, arka planda, sadece log
   systemd.services.clamav-weekly-scan = {
     description = "Haftalik ClamAV taramasi (sadece log, otomatik silme yok)";
     script = ''
@@ -37,14 +39,27 @@
     };
   };
 
-  # rkhunter - haftalik, sadece log
-  systemd.services.rkhunter-scan = {
-    description = "Haftalik rkhunter rootkit taramasi (sadece log)";
-    script = "${pkgs.rkhunter}/bin/rkhunter --check --skip-keypress --report-warnings-only";
+  systemd.services.chkrootkit-scan = {
+    description = "Haftalik chkrootkit taramasi (sadece log)";
+    script = "${pkgs.chkrootkit}/bin/chkrootkit || true";
     serviceConfig.Type = "oneshot";
     serviceConfig.Nice = 19;
   };
-  systemd.timers.rkhunter-scan = {
+  systemd.timers.chkrootkit-scan = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnCalendar = "weekly";
+      Persistent = true;
+    };
+  };
+
+  systemd.services.lynis-audit = {
+    description = "Haftalik Lynis guvenlik denetimi (sadece log)";
+    script = "${pkgs.lynis}/bin/lynis audit system --quiet || true";
+    serviceConfig.Type = "oneshot";
+    serviceConfig.Nice = 19;
+  };
+  systemd.timers.lynis-audit = {
     wantedBy = [ "timers.target" ];
     timerConfig = {
       OnCalendar = "weekly";
