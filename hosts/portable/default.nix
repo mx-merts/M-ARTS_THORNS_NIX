@@ -14,6 +14,10 @@
     ../../modules/hardware/peripherals.nix
 
     ../../modules/security/firewall.nix
+    ../../modules/security/hardening.nix
+    ../../modules/security/apparmor.nix
+    ../../modules/security/sandboxing.nix
+    ../../modules/security/scanning.nix
 
     ../../modules/desktop/kde.nix
     ../../modules/services/printing.nix
