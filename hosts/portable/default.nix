@@ -15,4 +15,10 @@
   networking.networkmanager.enable = true;
 
   system.stateVersion = "26.05";
+  system.nixos.tags = [ "DESK" ];
+
+  specialisation."PRIME".configuration = {
+    system.nixos.tags = [ "PRIME" ];
+    imports = [ ../../modules/hardware/nvidia-laptop.nix ];
+  };
 }
