@@ -1,11 +1,10 @@
 { config, lib, pkgs, ... }:
 {
-  # AMAC: Boot yapisi. GRUB kullaniyoruz - hem gorsel ozellestirme (tema)
-  # imkani var hem de hem UEFI hem eski BIOS/MBR makineleri destekliyor.
-  # efiInstallAsRemovable: NVRAM kaydina bagimli olmadan, her UEFI
-  # makinesinin otomatik denedigi fallback yola kurulum yapar - taşınabilir
-  # surucu icin kritik. Bu yuzden canTouchEfiVariables KAPALI olmali -
-  # ikisi ayni anda acik olamaz (GRUB modulunun kendi assertion'i).
+  # AMAC: GRUB, UEFI-only modda. Bu diskte GPT var ama BIOS Boot Partition
+  # yok, bu yuzden hybrid (UEFI+BIOS) kurulum yapilamiyor. UEFI-only zaten
+  # tema/rice imkanini tam sagliyor, BIOS destegi bu diskte repartition
+  # gerektirir - simdilik riske girmiyoruz.
+  # efiInstallAsRemovable: NVRAM kaydina bagimli olmadan calisir.
 
   boot.loader.efi.canTouchEfiVariables = false;
 
@@ -13,7 +12,7 @@
     enable = true;
     efiSupport = true;
     efiInstallAsRemovable = true;
-    device = "/dev/sda";
+    device = "nodev";   # BIOS/MBR kurulumu YOK, sadece UEFI
     useOSProber = true;
   };
 
