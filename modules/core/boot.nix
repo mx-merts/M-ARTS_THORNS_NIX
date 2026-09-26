@@ -4,10 +4,10 @@
   # imkani var hem de hem UEFI hem eski BIOS/MBR makineleri destekliyor.
   # efiInstallAsRemovable: NVRAM kaydina bagimli olmadan, her UEFI
   # makinesinin otomatik denedigi fallback yola kurulum yapar - taşınabilir
-  # surucu icin kritik.
+  # surucu icin kritik. Bu yuzden canTouchEfiVariables KAPALI olmali -
+  # ikisi ayni anda acik olamaz (GRUB modulunun kendi assertion'i).
 
-  boot.loader.systemd-boot.enable = false;
-  boot.loader.efi.canTouchEfiVariables = true;
+  boot.loader.efi.canTouchEfiVariables = false;
 
   boot.loader.grub = {
     enable = true;
