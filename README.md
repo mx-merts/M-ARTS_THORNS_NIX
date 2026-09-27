@@ -20,7 +20,7 @@
 
 hosts/portable/         bu makinenin profili + donanim taramasi
 modules/core/           sistemin iskeleti (boot, nix, locale, networking)
-modules/network/         DNS, VPN, gizlilik/hiz ayarlari (dnscrypt-proxy, wireguard)
+modules/network/         DNS, VPN, gizlilik/hiz ayarlari (dnscrypt-proxy, proton-vpn)
 modules/hardware/       fiziksel donanim (firmware, ses, bluetooth, cevre birimleri)
 modules/hardware/gpu/   GPU'ya ozel, makineye kilitli ayarlar (PRIME busId gibi)
 modules/security/       firewall, sertlestirme
