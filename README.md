@@ -13,12 +13,14 @@
 - Kullanici ayarlari                   -> modules/users/m-arts.nix
 - Bootloader / kernel                  -> modules/core/boot.nix
 - Ag / hostname                        -> modules/core/networking.nix
+- DNS / VPN / gizlilik ayari            -> modules/network/ altinda ilgili dosya
 - Saat dilimi / dil / klavye           -> modules/core/locale.nix
 
 ## Klasor yapisi
 
 hosts/portable/         bu makinenin profili + donanim taramasi
 modules/core/           sistemin iskeleti (boot, nix, locale, networking)
+modules/network/         DNS, VPN, gizlilik/hiz ayarlari (dnscrypt-proxy, wireguard)
 modules/hardware/       fiziksel donanim (firmware, ses, bluetooth, cevre birimleri)
 modules/hardware/gpu/   GPU'ya ozel, makineye kilitli ayarlar (PRIME busId gibi)
 modules/security/       firewall, sertlestirme
