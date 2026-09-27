@@ -29,6 +29,7 @@
     ../../modules/services/printing.nix
 
     ../../modules/programs/base.nix
+    ../../modules/programs/shell.nix
     ../../modules/users/m-arts.nix
   ];
 
