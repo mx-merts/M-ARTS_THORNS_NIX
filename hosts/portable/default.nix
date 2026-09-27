@@ -31,13 +31,17 @@
   system.stateVersion = "26.05";
   system.nixos.tags = [ "DESK" ];
 
-  specialisation."PRIME".configuration = {
+  specialisation."PRIME".configuration = { config, lib, ... }: {
     system.nixos.tags = lib.mkForce [ "PRIME" ];
+    # configurationName set edilince GRUB tarih/versiyon formatini atlar,
+    # sadece bu string'i kullanir -> "NixOS - PRIME-r4" gibi temiz cikti
+    boot.loader.grub.configurationName = config.system.nixos.label;
     imports = [ ../../modules/hardware/gpu/nvidia-laptop.nix ];
   };
 
-  specialisation."NVIDIA-DESKTOP".configuration = {
+  specialisation."NVIDIA-DESKTOP".configuration = { config, lib, ... }: {
     system.nixos.tags = lib.mkForce [ "NVIDIA-DESKTOP" ];
+    boot.loader.grub.configurationName = config.system.nixos.label;
     imports = [ ../../modules/hardware/gpu/nvidia-desktop.nix ];
   };
 }
