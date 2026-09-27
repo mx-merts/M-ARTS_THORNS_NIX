@@ -77,7 +77,7 @@ E#t       .E##f E#t LK:    t#E   ;  / \EEf`   `"``   `( ,WK,
     { "type": "wm", "key": "Masaustu" },
     { "type": "terminal", "key": "Terminal" },
     "break",
-    { "type": "wifi", "key": "WiFi", "format": "{ssid} ({signal-quality}%)" },
+    { "type": "wifi", "key": "WiFi", "format": "{ssid} ({signal-quality})" },
     { "type": "localip", "key": "IP" },
     "break",
     "colors"
