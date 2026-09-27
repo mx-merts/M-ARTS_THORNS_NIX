@@ -1,5 +1,6 @@
 # AMAC: Zsh + Oh My Zsh (populer, plugin/tema ekosistemi genis, baskalarindan
-# kopyalamak kolay) + fastfetch (her yeni terminalde otomatik sistem bilgisi).
+# kopyalamak kolay) + fastfetch (her yeni terminalde otomatik sistem bilgisi,
+# ozel ASCII logo + sade/duzenli bilgi formati -- config /etc/fastfetch/).
 
 { config, lib, pkgs, ... }:
 
@@ -12,7 +13,7 @@
       plugins = [ "git" "sudo" "history-substring-search" ];
     };
     interactiveShellInit = ''
-      fastfetch
+      fastfetch --config /etc/fastfetch/config.jsonc
     '';
   };
 
