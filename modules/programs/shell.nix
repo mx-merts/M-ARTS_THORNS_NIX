@@ -61,7 +61,7 @@ E#t       .E##f E#t LK:    t#E   ;  / \EEf`   `"``   `( ,WK,
     "separator": " : "
   },
   "modules": [
-    "title",
+    { "type": "title", "format": "M-ARTS@THORNS" },
     "separator",
     { "type": "os", "key": "OS" },
     { "type": "kernel", "key": "Kernel" },
