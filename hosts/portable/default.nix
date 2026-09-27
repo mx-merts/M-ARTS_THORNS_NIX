@@ -33,7 +33,7 @@
     ../../modules/users/m-arts.nix
   ];
 
-  networking.hostName = "nixos-portable";
+  networking.hostName = "THORNS";
 
   system.stateVersion = "26.05";
   system.nixos.tags = [ "DESK" ];
