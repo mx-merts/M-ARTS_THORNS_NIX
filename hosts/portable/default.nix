@@ -30,6 +30,13 @@
 
     ../../modules/programs/base.nix
     ../../modules/programs/shell.nix
+    ../../modules/programs/cli-tools.nix
+    ../../modules/apps/development.nix
+    ../../modules/apps/gaming.nix
+    ../../modules/apps/office.nix
+    ../../modules/apps/design.nix
+    ../../modules/services/flatpak.nix
+    ../../modules/desktop/quickshell.nix
     ../../modules/users/m-arts.nix
   ];
 
