@@ -8,6 +8,9 @@
     ../../modules/core/locale.nix
     ../../modules/core/networking.nix
 
+
+    ../../modules/network/dns.nix
+
     ../../modules/hardware/agnostic.nix
     ../../modules/hardware/audio.nix
     ../../modules/hardware/bluetooth.nix
