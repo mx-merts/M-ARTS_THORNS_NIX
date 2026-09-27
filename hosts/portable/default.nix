@@ -35,4 +35,9 @@
     system.nixos.tags = [ "PRIME" ];
     imports = [ ../../modules/hardware/gpu/nvidia-laptop.nix ];
   };
+
+  specialisation."NVIDIA-DESKTOP".configuration = {
+    system.nixos.tags = [ "NVIDIA-DESKTOP" ];
+    imports = [ ../../modules/hardware/gpu/nvidia-desktop.nix ];
+  };
 }
