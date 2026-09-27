@@ -11,6 +11,7 @@
 
     ../../modules/network/dns.nix
     ../../modules/network/vpn.nix
+    ../../modules/network/tuning.nix
 
     ../../modules/hardware/agnostic.nix
     ../../modules/hardware/audio.nix
