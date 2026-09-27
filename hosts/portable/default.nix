@@ -31,13 +31,16 @@
   system.stateVersion = "26.05";
   system.nixos.tags = [ "DESK" ];
 
+  # "Default" yerine GRUB'da düz "DESK" gostermek icin
+  boot.loader.grub.configurationName = "DESK";
+
   specialisation."PRIME".configuration = {
-    system.nixos.tags = [ "PRIME" ];
+    system.nixos.tags = lib.mkForce [ "PRIME" ];
     imports = [ ../../modules/hardware/gpu/nvidia-laptop.nix ];
   };
 
   specialisation."NVIDIA-DESKTOP".configuration = {
-    system.nixos.tags = [ "NVIDIA-DESKTOP" ];
+    system.nixos.tags = lib.mkForce [ "NVIDIA-DESKTOP" ];
     imports = [ ../../modules/hardware/gpu/nvidia-desktop.nix ];
   };
 }
