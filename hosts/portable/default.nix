@@ -36,6 +36,7 @@
     ../../modules/apps/office.nix
     ../../modules/apps/design.nix
     ../../modules/apps/extras.nix
+    ../../modules/apps/minecraft.nix
     ../../modules/services/flatpak.nix
     ../../modules/desktop/quickshell.nix
     ../../modules/users/m-arts.nix
