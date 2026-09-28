@@ -1,6 +1,6 @@
 # AMAC: Oyun altyapisi. Steam icin ozel NixOS modulu (32-bit OpenGL/audio
 # otomatik ayarlanir), Heroic (Epic/GOG/Amazon, FHS'li surum daha az sorun
-# cikarir), Lutris + ProtonUp-Qt (Proton/Wine surum yonetimi), Wine/Bottles
+# cikarir), ProtonUp-Qt (Lutris Flatpak olarak flatpak.nix'te), Wine/Bottles
 # (Steam/Lutris disi bagimsiz kullanim), RetroArch + konsol-ozel emulatorler.
 
 { config, lib, pkgs, ... }:
@@ -10,7 +10,6 @@
 
   environment.systemPackages = with pkgs; [
     heroic
-    lutris
     protonup-qt
 
     wineWow64Packages.stable
