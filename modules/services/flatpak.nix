@@ -15,6 +15,7 @@
     ];
     packages = [
       "org.vinegarhq.Sober"
+      "net.lutris.Lutris"
     ];
   };
 }
