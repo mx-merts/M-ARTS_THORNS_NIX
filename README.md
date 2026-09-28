@@ -3,6 +3,9 @@
 ## Nereye ne yazilir?
 
 - Yeni program/paket kurmak            -> modules/programs/base.nix
+- Uygulama (oyun/gelistirme/ofis)      -> modules/apps/ altinda ilgili dosya
+- Flatpak uygulamasi ekle              -> modules/services/flatpak.nix
+- Terminal araci (cli)                 -> modules/programs/cli-tools.nix
 - Donanim sorunu (Wifi, ses, GPU)      -> modules/hardware/ altinda ilgili dosya
 - Bluetooth ayari                      -> modules/hardware/bluetooth.nix
 - USB/kamera/otomatik baglama          -> modules/hardware/peripherals.nix
@@ -27,6 +30,7 @@ modules/security/       firewall, sertlestirme
 modules/desktop/        masaustu ortamlari (KDE, ileride Hyprland)
 modules/services/       arka plan servisleri (yazici, ileride docker vs.)
 modules/programs/       kullanici paketleri, amac bazli
+modules/apps/           gelistirme, oyun, ofis, tasarim, gunluk uygulamalar, minecraft
 modules/users/          kullanici tanimlari
 
 ## Specialisation'lar (boot menusunden secilir)
