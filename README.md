@@ -87,3 +87,16 @@ Bu proje **CC BY-NC-SA 4.0** (Creative Commons Attribution-NonCommercial-ShareAl
 Detaylar için [LICENSE](LICENSE) dosyasına bakın.
 
 Telif hakkı (c) 2026 M-ARTS - https://github.com/mx-merts
+
+## Kisa Komutlar
+
+- **Rebuild:** `sudo /etc/nixos/rebuild.sh`
+  Sayaci arttirir, NIXOS_LABEL_VERSION ile switch eder.
+
+- **GitHub'a yedekle:** `sudo /etc/nixos/push.sh` (veya `sudo /etc/nixos/push.sh "commit mesaji"`)
+  Tum degisiklikleri add + commit + push eder. Degisiklik yoksa atlar.
+
+## Git Notu
+
+Bu repo'ya root kullanici SSH key ile baglanir (/root/.ssh/id_ed25519).
+Bu yuzden git komutlari sudo ile calistirilmalidir.
