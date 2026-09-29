@@ -1,0 +1,5 @@
+.rebuild-count
+result
+result-*
+*.swp
+*~

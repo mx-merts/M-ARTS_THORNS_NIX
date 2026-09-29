@@ -11,4 +11,12 @@
     layout = "tr";
     variant = "";
   };
+
+  # sddm-kcm: System Settings > Startup and Shutdown > Login Screen (SDDM)
+  # altinda tema indirme/onizleme/uygulama arayuzu acar.
+  # NOT: GUI'den indirilen tema rebuild'de kaybolabilir, kalici hale
+  # getirmek icin services.displayManager.sddm.theme kullanilacak.
+  environment.systemPackages = with pkgs; [
+    kdePackages.sddm-kcm
+  ];
 }
