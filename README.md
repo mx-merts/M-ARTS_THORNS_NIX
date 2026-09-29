@@ -75,3 +75,15 @@ Modüller (modules/) hic dokunulmaz - tasima sadece hosts/ seviyesinde olur.
 KDE Plasma gorsel ayarlari (tema, ikon, panel duzeni, kisayollar) ve SDDM
 temasi su an ~/.config altinda imperative olarak yasiyor. Home-Manager +
 plasma-manager entegrasyonu ile ileride deklaratif hale getirilecek.
+
+## Lisans
+
+Bu proje **CC BY-NC-SA 4.0** (Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International) lisansı altındadır.
+
+- **Atıf (BY):** Kullanan kişi "M-ARTS" adını belirtmek zorundadır.
+- **Ticari Değil (NC):** Ticari amaçla kullanılamaz, satılamaz.
+- **Aynı Lisansla Paylaş (SA):** Değiştirilip paylaşılırsa aynı lisansla paylaşılmalıdır.
+
+Detaylar için [LICENSE](LICENSE) dosyasına bakın.
+
+Telif hakkı (c) 2026 M-ARTS - https://github.com/mx-merts
