@@ -26,6 +26,7 @@
     ../../modules/security/scanning.nix
 
     ../../modules/desktop/kde.nix
+    ../../modules/desktop/sddm-theme.nix
     ../../modules/services/printing.nix
 
     ../../modules/programs/base.nix
