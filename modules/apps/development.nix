@@ -9,7 +9,7 @@
 {
   environment.systemPackages = with pkgs; [
     vscode
-    jdk25
+    jdk21
     unityhub
     lazygit
     gh
