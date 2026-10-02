@@ -14,6 +14,7 @@
     efiInstallAsRemovable = true;
     device = "nodev";   # BIOS/MBR kurulumu YOK, sadece UEFI
     useOSProber = true;
+    configurationLimit = 10;
   };
 
   boot.initrd.systemd.enable = true;

@@ -17,12 +17,12 @@
   boot.extraModulePackages = [ ];
 
   fileSystems."/" =
-    { device = "/dev/disk/by-uuid/c0077f87-f021-40b0-b2dc-4572da666b7b";
+    { device = "/dev/disk/by-label/THORNS-ROOT";
       fsType = "ext4";
     };
 
   fileSystems."/boot" =
-    { device = "/dev/disk/by-uuid/227E-0707";
+    { device = "/dev/disk/by-label/THORNS-BOOT";
       fsType = "vfat";
       options = [ "fmask=0077" "dmask=0077" ];
     };
