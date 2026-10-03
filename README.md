@@ -26,7 +26,7 @@ modules/core/           sistemin iskeleti (boot, nix, locale, networking)
 modules/network/        DNS, VPN, gizlilik/hiz ayarlari (dnscrypt-proxy, proton-vpn)
 modules/hardware/       fiziksel donanim (firmware, ses, bluetooth, cevre birimleri)
 modules/hardware/gpu/   GPU'ya ozel, makineye kilitli ayarlar (PRIME busId gibi)
-modules/security/       firewall, sertlestirme, AppArmor, Firejail, ClamAV+Lynis
+modules/security/       firewall, sertlestirme, AppArmor, Firejail, ClamAV+Lynis , NOCER
 modules/desktop/        masaustu ortamlari (KDE, ileride Hyprland)
 modules/services/       arka plan servisleri (yazici, flatpak)
 modules/programs/       kullanici paketleri, amac bazli
