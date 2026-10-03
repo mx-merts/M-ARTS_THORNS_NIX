@@ -1,0 +1,22 @@
+[package]
+name = "nocer"
+version = "0.1.0"
+edition = "2021"
+description = "NixOS runtime certificate manager"
+license = "MIT"
+
+[[bin]]
+name = "nocer"
+path = "src/main.rs"
+
+[dependencies]
+clap       = { version = "4", features = ["derive"] }
+crossterm  = "0.28"
+ratatui    = "0.29"
+serde      = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true

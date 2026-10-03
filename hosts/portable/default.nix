@@ -7,6 +7,7 @@
     ../../modules/core/nix-settings.nix
     ../../modules/core/locale.nix
     ../../modules/core/networking.nix
+    ../../modules/core/auto-upgrade.nix
 
 
     ../../modules/network/dns.nix
@@ -24,6 +25,7 @@
     ../../modules/security/apparmor.nix
     ../../modules/security/sandboxing.nix
     ../../modules/security/scanning.nix
+    ../../modules/security/nocer
 
     ../../modules/desktop/kde.nix
     ../../modules/desktop/sddm-theme.nix
@@ -46,7 +48,9 @@
   networking.hostName = "THORNS";
 
   system.stateVersion = "26.05";
-  system.nixos.tags = [ "DESK" ];
+  system.nixos.tags = [ "DESK" ];  
+
+  programs.nocer.enable = true;
 
   specialisation."PRIME".configuration = { config, lib, ... }: {
     system.nixos.tags = lib.mkForce [ "PRIME" ];
