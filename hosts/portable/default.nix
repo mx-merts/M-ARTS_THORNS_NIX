@@ -34,12 +34,12 @@
     ../../modules/programs/base.nix
     ../../modules/programs/shell.nix
     ../../modules/programs/cli-tools.nix
+    ../../modules/programs/jrun.nix
     ../../modules/apps/development.nix
     ../../modules/apps/gaming.nix
     ../../modules/apps/office.nix
     ../../modules/apps/design.nix
     ../../modules/apps/extras.nix
-    ../../modules/apps/minecraft.nix
     ../../modules/services/flatpak.nix
     ../../modules/desktop/quickshell.nix
     ../../modules/users/m-arts.nix
