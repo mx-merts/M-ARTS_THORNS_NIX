@@ -9,7 +9,6 @@
     ../../modules/core/networking.nix
     ../../modules/core/auto-upgrade.nix
 
-
     ../../modules/network/dns.nix
     ../../modules/network/vpn.nix
     ../../modules/network/tuning.nix
@@ -48,14 +47,19 @@
   networking.hostName = "THORNS";
 
   system.stateVersion = "26.05";
-  system.nixos.tags = [ "DESK" ];  
+  system.nixos.tags = [ "DESK" ];
+
+  console.keyMap = "trq";
+
+  environment.sessionVariables.NIXOS_OZONE_WL = "1";
 
   programs.nocer.enable = true;
 
+  security.sudo.enable = true;
+  security.sudo.wheelNeedsPassword = true;
+
   specialisation."PRIME".configuration = { config, lib, ... }: {
     system.nixos.tags = lib.mkForce [ "PRIME" ];
-    # configurationName set edilince GRUB tarih/versiyon formatini atlar,
-    # sadece bu string'i kullanir -> "NixOS - PRIME-r4" gibi temiz cikti
     boot.loader.grub.configurationName = config.system.nixos.label;
     imports = [ ../../modules/hardware/gpu/nvidia-laptop.nix ];
   };
