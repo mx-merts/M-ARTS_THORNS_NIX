@@ -13,7 +13,7 @@
     efiSupport = true;
     efiInstallAsRemovable = true;
     device = "nodev";   # BIOS/MBR kurulumu YOK, sadece UEFI
-    useOSProber = true;
+    useOSProber = false;
     configurationLimit = 10;
   };
 
