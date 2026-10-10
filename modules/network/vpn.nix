@@ -19,6 +19,7 @@
   environment.systemPackages = with pkgs; [
     proton-vpn
     wireguard-tools
+    networkmanagerapplet
   ];
 
   # WireGuard'in asimetrik routing'i reverse-path filtering ile cakisiyor,

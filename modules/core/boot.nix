@@ -13,7 +13,7 @@
     efiSupport = true;
     efiInstallAsRemovable = true;
     device = "nodev";   # BIOS/MBR kurulumu YOK, sadece UEFI
-    useOSProber = false;
+    useOSProber = true;   # ← DEĞİŞTİ: Windows/diğer OS'ları GRUB'da göster
     configurationLimit = 10;
   };
 

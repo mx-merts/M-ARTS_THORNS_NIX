@@ -46,7 +46,10 @@
   networking.hostName = "THORNS";
 
   system.stateVersion = "26.05";
+
   system.nixos.tags = [ "DESK" ];
+
+    system.nixos.label = "NIXOS-DESK-" + (let v = builtins.getEnv "NIXOS_LABEL_VERSION"; in if v == "" then ":-:-:dev:-:-:" else v);
 
   console.keyMap = "trq";
 
@@ -57,15 +60,13 @@
   security.sudo.enable = true;
   security.sudo.wheelNeedsPassword = true;
 
-  specialisation."PRIME".configuration = { config, lib, ... }: {
-    system.nixos.tags = lib.mkForce [ "PRIME" ];
-    boot.loader.grub.configurationName = config.system.nixos.label;
-    imports = [ ../../modules/hardware/gpu/nvidia-laptop.nix ];
-  };
+	specialisation."PRIME".configuration = { config, lib, ... }: {
+	  boot.loader.grub.configurationName = lib.mkForce ("NIXOS-PRIME-" + (let v = builtins.getEnv "NIXOS_LABEL_VERSION"; in if v == "" then ":-:-:dev:-:-:" else v));
+	  imports = [ ../../modules/hardware/gpu/nvidia-laptop.nix ];
+	};
 
   specialisation."NVIDIA-DESKTOP".configuration = { config, lib, ... }: {
-    system.nixos.tags = lib.mkForce [ "NVIDIA-DESKTOP" ];
-    boot.loader.grub.configurationName = config.system.nixos.label;
+    boot.loader.grub.configurationName = lib.mkForce ("NIXOS-NVIDIA-DESKTOP-" + (let v = builtins.getEnv "NIXOS_LABEL_VERSION"; in if v == "" then ":-:-:dev:-:-:" else v));
     imports = [ ../../modules/hardware/gpu/nvidia-desktop.nix ];
   };
 }
