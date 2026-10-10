@@ -34,6 +34,7 @@
     ../../modules/programs/shell.nix
     ../../modules/programs/cli-tools.nix
     ../../modules/programs/jrun.nix
+    ../../modules/programs/lrun.nix
     ../../modules/apps/development.nix
     ../../modules/apps/gaming.nix
     ../../modules/apps/office.nix
