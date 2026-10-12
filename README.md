@@ -1,102 +1,145 @@
-# MARTS THORNS
+# M-ARTS THORNS
+
+**Türkçe** | [English](README.en.md)
+
+Flake tabanlı, modüler ve deklaratif bir NixOS yapılandırması. Ayarlar, konularına göre ayrı modüllere bölünmüştür; bir şeyi değiştirmek istediğinizde nereye bakmanız gerektiğini aşağıdaki tablodan hemen bulabilirsiniz.
 
 ## Nereye ne yazılır?
 
-- Yeni program/paket kurmak            -> modules/programs/base.nix
-- Uygulama (oyun/gelistirme/ofis)      -> modules/apps/ altinda ilgili dosya
-- Flatpak uygulamasi ekle              -> modules/services/flatpak.nix
-- Terminal araci (cli)                 -> modules/programs/cli-tools.nix
-- Donanim sorunu (Wifi, ses, GPU)      -> modules/hardware/ altinda ilgili dosya
-- Bluetooth ayari                      -> modules/hardware/bluetooth.nix
-- USB/kamera/otomatik baglama          -> modules/hardware/peripherals.nix
-- Firewall / port acma                 -> modules/security/firewall.nix
-- KDE ozel ayar                        -> modules/desktop/kde.nix
-- Yeni arka plan servisi               -> modules/services/ altina yeni dosya
-- Makineye ozel ayar                   -> hosts/portable/default.nix icinde specialisation
-- Kullanici ayarlari                   -> modules/users/m-arts.nix
-- Bootloader / kernel                  -> modules/core/boot.nix
-- Ag / hostname                        -> modules/core/networking.nix
-- DNS / VPN / gizlilik ayari           -> modules/network/ altinda ilgili dosya
-- Saat dilimi / dil / klavye           -> modules/core/locale.nix
+| Konu | Nereye yazılır? |
+| --- | --- |
+| Yeni program/paket kurulumu | `modules/programs/base.nix` |
+| Terminal aracı (CLI) | `modules/programs/cli-tools.nix` |
+| Kabuk/terminal ayarları | `modules/programs/shell.nix` |
+| Neovim (kurulum ve sistem geneli ayarlar) | `modules/programs/neovim.nix` |
+| Neovim kişisel ayarları | `~/.config/nvim/init.lua` (elle yönetilir) |
+| `.jar` dosyası çalıştırma | `modules/programs/jrun.nix` |
+| Yerel (native) Linux uygulaması çalıştırma | `modules/programs/lrun.nix` |
+| Uygulama (oyun, geliştirme, ofis) | `modules/apps/` altında ilgili dosya |
+| Flatpak uygulaması | `modules/services/flatpak.nix` |
+| Yeni arka plan servisi | `modules/services/` altına yeni dosya |
+| Donanım sorunu (Wi-Fi, ses, GPU) | `modules/hardware/` altında ilgili dosya |
+| Bluetooth ayarı | `modules/hardware/bluetooth.nix` |
+| USB / kamera / otomatik bağlama | `modules/hardware/peripherals.nix` |
+| DNS / VPN / gizlilik ayarı | `modules/network/` altında ilgili dosya |
+| Güvenlik duvarı / port açma | `modules/security/firewall.nix` |
+| Sertifika yönetimi | `modules/security/` altında NOCER |
+| KDE'ye özel ayarlar | `modules/desktop/kde.nix` |
+| Kullanıcı ayarları | `modules/users/m-arts.nix` |
+| Önyükleyici / çekirdek | `modules/core/boot.nix` |
+| Ağ / makine adı (hostname) | `modules/core/networking.nix` |
+| Saat dilimi / dil / klavye | `modules/core/locale.nix` |
+| Makineye özel ayar | `hosts/portable/default.nix` içinde `specialisation` |
 
-## Klasor yapisi
+## Klasör ve dosya yapısı
 
-hosts/portable/         bu makinenin profili + donanim taramasi
-modules/core/           sistemin iskeleti (boot, nix, locale, networking)
-modules/network/        DNS, VPN, gizlilik/hiz ayarlari (dnscrypt-proxy, proton-vpn)
-modules/hardware/       fiziksel donanim (firmware, ses, bluetooth, cevre birimleri)
-modules/hardware/gpu/   GPU'ya ozel, makineye kilitli ayarlar (PRIME busId gibi)
-modules/security/       firewall, sertlestirme, AppArmor, Firejail, ClamAV+Lynis , NOCER
-modules/desktop/        masaustu ortamlari (KDE, ileride Hyprland)
-modules/services/       arka plan servisleri (yazici, flatpak)
-modules/programs/       kullanici paketleri, amac bazli
-modules/apps/           gelistirme, oyun, ofis, tasarim, gunluk uygulamalar, minecraft
-modules/users/          kullanici tanimlari
+| Yol | Açıklama |
+| --- | --- |
+| `flake.nix` | Flake'in giriş noktası; sistem yapılandırmaları (host'lar) burada tanımlanır |
+| `flake.lock` | Bağımlılık sürümlerini sabitleyen kilit dosyası |
+| `rebuild.sh` | Etkileşimli rebuild betiği |
+| `push.sh` | Değişiklikleri GitHub'a yedekleyen betik |
+| `hosts/portable/` | Bu makinenin profili ve donanım taraması |
+| `modules/core/` | Sistemin iskeleti (`boot`, `nix`, `locale`, `networking`) |
+| `modules/network/` | DNS, VPN ve gizlilik ayarları (`dnscrypt-proxy`, `proton-vpn`) |
+| `modules/hardware/` | Fiziksel donanım (donanım yazılımı, ses, Bluetooth, çevre birimleri) |
+| `modules/hardware/gpu/` | GPU'ya özel, makineye kilitli ayarlar (PRIME `busId` gibi) |
+| `modules/security/` | Güvenlik duvarı, sertleştirme, AppArmor, Firejail, ClamAV + Lynis ve NOCER (sertifika yöneticisi) |
+| `modules/desktop/` | Masaüstü ortamları (KDE; ileride Hyprland) |
+| `modules/services/` | Arka plan servisleri (yazıcı, Flatpak) |
+| `modules/programs/` | Amaca göre ayrılmış kullanıcı paketleri (`base`, `shell`, `cli-tools`, `neovim`, `jrun`, `lrun`) |
+| `modules/apps/` | Geliştirme, oyun, ofis, tasarım, günlük kullanım uygulamaları ve Minecraft |
+| `modules/users/` | Kullanıcı tanımları |
+| `assets/sddm/pixel-night-city/` | SDDM giriş ekranı teması (`pixel-night-city`) dosyaları |
 
-## Specialisation'lar (boot menusunden secilir)
+## Özel modüller
 
-DESK            - Varsayilan (ana config, specialisation degil). NVIDIA'siz her
-                  makinede guvenli, Intel/AMD iGPU fallback (nouveau/modesetting).
-PRIME           - Sadece bu laptop (RTX 4050 Max-Q + Raptor Lake-P). Intel iGPU
-                  varsayilan + NVIDIA offload. busId sabit, makineye kilitli.
-                  nvidia.open = true (Ada Lovelace, Turing+).
-NVIDIA-DESKTOP  - Tek NVIDIA GPU'lu masaustu senaryosu. busId pinleme yok,
-                  agnostik. nvidia.open = false (Maxwell'den Ada'ya kadar
-                  tum nesillerde calisir, genis uyumluluk).
-                  Gercek NVIDIA masaustu donaniminda HENUZ TEST EDILMEDI.
+nixpkgs'ta bulunmayan, bu depo için özel olarak geliştirilmiş modüller:
 
-## Rebuild sayaci ve GRUB isimlendirme
+- **NOCER - NixOS sertifika yöneticisi.** `modules/security/` altındadır ve sertifikaların deklaratif olarak yönetilmesini sağlar. Ayrıntılar için kendi README dosyasına bakın.
+- **JRUN - `.jar` çalıştırıcı.** `modules/programs/jrun.nix` dosyasındadır. Java `.jar` dosyalarını sorunsuz çalıştırmak için geliştirilmiştir.
+- **LRUN - yerel Linux uygulama çalıştırıcı.** `modules/programs/lrun.nix` dosyasındadır. Yerel (native) Linux uygulamalarını sorunsuz çalıştırmak için geliştirilmiştir.
 
-rebuild.sh her calistiginda .rebuild-count dosyasindaki sayiyi 1 arttirir,
-NIXOS_LABEL_VERSION=rN olarak ortam degiskenine koyar ve --impure ile
-nixos-rebuild'e gecirir. Boylece GRUB menusunde "NixOS - PRIME-r21" gibi
-temiz isimler cikar; tarih placeholder'i (1970-01-01) gorunmez.
+## Specialisation'lar
 
-.rebuild-count git'te TAKIP EDILMEZ (her rebuild'de degisir, gereksiz commit
-uretir). Ilk kurulumda dosya yoksa rebuild.sh "0" varsayar, sorun cikmaz.
+Specialisation'lar, NixOS'un `specialisation` özelliğiyle oluşturulan alternatif sistem sürümleridir. Önyükleme menüsünden (GRUB) seçilirler.
+
+- **DESK:** Varsayılan seçenektir; ana yapılandırmanın kendisidir, specialisation değildir. NVIDIA ekran kartı olmayan her makinede güvenle çalışır; Intel/AMD tümleşik ekran kartını (iGPU) kullanır (nouveau/modesetting).
+- **PRIME:** Yalnızca bu dizüstü bilgisayar içindir (RTX 4050 Max-Q + Raptor Lake-P). Varsayılan olarak Intel iGPU kullanılır; NVIDIA ekran kartı offload yöntemiyle devreye girer. `busId` sabit olduğu için bu sürüm makineye kilitlidir. `hardware.nvidia.open = true` (Ada Lovelace; Turing ve sonrası).
+- **NVIDIA-DESKTOP:** Tek NVIDIA ekran kartlı masaüstü senaryosu içindir. `busId` sabitlenmez, yani makineden bağımsızdır. `hardware.nvidia.open = false` olarak ayarlanmıştır ve geniş uyumluluk için Maxwell'den Ada'ya kadar tüm nesillerde çalışacak şekilde hazırlanmıştır. **Gerçek bir NVIDIA masaüstü donanımında henüz test edilmedi.**
+
+## Kısa komutlar
+
+Aşağıdaki komutlar, deponun `/etc/nixos` altında bulunduğunu varsayar.
+
+```bash
+# Yeniden derleme ve uygulama (etkileşimli)
+sudo /etc/nixos/rebuild.sh
+
+# Değişiklikleri GitHub'a yedekleme
+sudo /etc/nixos/push.sh
+
+# Aynı işlem, kendi commit mesajınızla
+sudo /etc/nixos/push.sh "commit mesajı"
+```
+
+- **`rebuild.sh`** etkileşimli çalışır ve her aşamada onay ister (ayrıntılar aşağıda). Sayaç yalnızca `switch` başarıyla tamamlandığında artar.
+- **`push.sh`** tüm değişiklikleri ekler (`add`), commit'ler ve GitHub'a gönderir (`push`). Henüz gönderilmemiş commit'ler varsa onları da gönderir. Yapılacak bir şey yoksa işlemi atlar.
+
+> **Not:** Bu depoya `root` kullanıcısı SSH anahtarıyla (`/root/.ssh/id_ed25519`) bağlanır. Bu yüzden git komutları `sudo` ile çalıştırılmalıdır.
+
+## Rebuild akışı
+
+`rebuild.sh` etkileşimli çalışır ve her aşamada onay ister:
+
+1. **`git add -A`:** Tüm değişiklikler (yeni dosyalar dahil) git'e eklenir. Flake'ler yalnızca git'in bildiği dosyaları görür; bu adım sayesinde yeni bir modül dosyası eklediğinizde `path does not exist` hatası almazsınız.
+2. **Durum ve onay:** Git durumu gösterilir ve devam etmek için onay istenir.
+3. **`dry-activate`:** Yapılandırma tamamen derlenir ve bir değişiklik raporu verilir, ancak **hiçbir şey uygulanmaz**. Bu aşama başarısız olursa `switch` çalışmaz ve `push` yapılmaz. Ardından onay istenir.
+4. **`switch`:** Yeni yapılandırma sisteme uygulanır. Ardından onay istenir.
+5. **`push`:** Değişiklikler GitHub'a gönderilir ve bir özet gösterilir.
+
+### Önemli notlar
+
+- Sayaç (`.rebuild-count`) yalnızca `switch` başarıyla tamamlandığında artar. Başarısız veya yarıda bırakılan denemeler numara harcamaz.
+- GRUB girdileri, `NIXOS_LABEL_VERSION` sayesinde `T-61` gibi sade adlar alır. `nixos-rebuild`'in varsayılan tarih yer tutucusu (`1970-01-01`) görünmez.
+- Tüm onay sorularında yalnızca Enter'a basmak "hayır" anlamına gelir (güvenli varsayılan).
+- `switch` başarısız olursa `push` atlanır; böylece bozuk bir yapılandırma GitHub'a yedeklenmez.
+- `push` sırasında GitHub tarafında geçici bir hata olursa (örneğin `fatal error in commit_refs`) commit'ler yerelde güvende kalır. `push.sh` bir sonraki çalıştırmada bekleyen commit'leri kendiliğinden gönderir.
+- `.rebuild-count` git tarafından **takip edilmez**; her başarılı rebuild'de değiştiği için gereksiz commit'lere yol açardı. İlk kurulumda bu dosya yoksa `rebuild.sh` sayacı `0` kabul eder.
 
 ## Yeni bir host eklemek
 
-hosts/<yeni-isim>/ altina default.nix + hardware-configuration.nix ekle,
-flake.nix'e nixosConfigurations.<yeni-isim> olarak bagla.
+1. `hosts/<isim>/` klasörünü oluşturun ve içine `default.nix` ile `hardware-configuration.nix` dosyalarını ekleyin.
+2. `flake.nix` içine bu host'u `nixosConfigurations.<isim>` olarak ekleyin.
 
-## Baska diske/makineye tasima
+## Başka bir diske veya makineye taşıma
 
-hardware-configuration.nix icindeki dosya sistemi UUID'leri (fileSystems."/"
-ve fileSystems."/boot") BU FLASH'A OZELDIR. Yeni bir diske tasindiginda:
-  1. nixos-generate-config --root /mnt ile yeni hardware-configuration.nix uret
-  2. Eski dosyayi bununla degistir (UUID'ler otomatik dogru gelir)
-  3. rebuild.sh ile switch et
+`hardware-configuration.nix` içindeki dosya sistemi UUID'leri (`fileSystems."/"` ve `fileSystems."/boot"`) bu flash belleğe özeldir. Sistemi başka bir diske taşırken şunları yapın:
 
-Modüller (modules/) hic dokunulmaz - tasima sadece hosts/ seviyesinde olur.
+1. `nixos-generate-config --root /mnt` komutuyla yeni bir `hardware-configuration.nix` üretin.
+2. Eski dosyayı bununla değiştirin (UUID'ler otomatik olarak doğru gelir).
+3. `rebuild.sh` ile yeni yapılandırmayı uygulayın.
 
-## Deklaratif olmayan katmanlar (henuz)
+`modules/` klasörüne hiç dokunmanız gerekmez; taşıma yalnızca `hosts/` düzeyinde yapılır.
 
-KDE Plasma gorsel ayarlari (tema, ikon, panel duzeni, kisayollar) ve SDDM
-temasi su an ~/.config altinda imperative olarak yasiyor. Home-Manager +
-plasma-manager entegrasyonu ile ileride deklaratif hale getirilecek.
+## Henüz deklaratif olmayan kısımlar
+
+Aşağıdakiler şu an `~/.config` altında elle yönetiliyor:
+
+- KDE Plasma görsel ayarları (tema, simgeler, panel düzeni, kısayollar)
+- SDDM teması
+- Neovim kişisel ayarları (`~/.config/nvim/init.lua`)
+
+İleride Home Manager ve plasma-manager entegrasyonuyla bunlar da deklaratif olarak yönetilecek.
 
 ## Lisans
 
 Bu proje **CC BY-NC-SA 4.0** (Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International) lisansı altındadır.
 
-- **Atıf (BY):** Kullanan kişi "M-ARTS" adını belirtmek zorundadır.
-- **Ticari Değil (NC):** Ticari amaçla kullanılamaz, satılamaz.
+- **Atıf (BY):** Projeyi kullananlar "M-ARTS" adını belirtmek zorundadır.
+- **Ticari Olmayan (NC):** Proje ticari amaçla kullanılamaz ve satılamaz.
 - **Aynı Lisansla Paylaş (SA):** Değiştirilip paylaşılırsa aynı lisansla paylaşılmalıdır.
 
-Detaylar için [LICENSE](LICENSE) dosyasına bakın.
+Ayrıntılar için [LICENSE](LICENSE) dosyasına bakın.
 
-Telif hakkı (c) 2026 M-ARTS - https://github.com/mx-merts
-
-## Kisa Komutlar
-
-- **Rebuild:** `sudo /etc/nixos/rebuild.sh`
-  Sayaci arttirir, NIXOS_LABEL_VERSION ile switch eder.
-
-- **GitHub'a yedekle:** `sudo /etc/nixos/push.sh` (veya `sudo /etc/nixos/push.sh "commit mesaji"`)
-  Tum degisiklikleri add + commit + push eder. Degisiklik yoksa atlar.
-
-## Git Notu
-
-Bu repo'ya root kullanici SSH key ile baglanir (/root/.ssh/id_ed25519).
-Bu yuzden git komutlari sudo ile calistirilmalidir.
+Telif hakkı © 2026 M-ARTS - <https://github.com/mx-merts>
