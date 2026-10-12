@@ -9,19 +9,29 @@ cd /etc/nixos
 
 MSG="${1:-"update: $(date '+%Y-%m-%d %H:%M')"}"
 
-# Any changes?
-if [ -z "$(git status --porcelain)" ]; then
+# Working-tree changes?
+DIRTY=$(git status --porcelain | wc -l)
+# Unpushed commits? (e.g. a previous push was rejected by the remote)
+UNPUSHED=$(git rev-list --count @{u}..HEAD 2>/dev/null || echo 0)
+
+if [ "$DIRTY" -eq 0 ] && [ "$UNPUSHED" -eq 0 ]; then
   echo "No changes, push skipped."
   exit 0
 fi
 
-echo "=== Changed files ==="
-git status --short
-echo ""
+if [ "$DIRTY" -gt 0 ]; then
+  echo "=== Changed files ==="
+  git status --short
+  echo ""
+  git add -A
+  git commit -m "$MSG"
+fi
 
-git add -A
-git commit -m "$MSG"
+if [ "$UNPUSHED" -gt 0 ]; then
+  echo "=== $UNPUSHED unpushed commit(s) found, pushing them too ==="
+fi
+
 git push
 
 echo ""
-echo "Push completed: $MSG"
+echo "Push completed."
