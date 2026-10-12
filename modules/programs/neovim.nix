@@ -18,6 +18,7 @@
 
   # Neovim'in tam calismasi icin yardimci aracclar
   environment.systemPackages = with pkgs; [
+  	(pkgs.nerd-fonts.jetbrains-mono)  # editor ikonlari icin nerd font
     ripgrep       # telescope live-grep icin sart
     fd            # telescope dosya bulma icin hizli alternatif
     tree-sitter   # syntax highlight parserlari
