@@ -29,6 +29,7 @@
     ../../modules/desktop/kde.nix
     ../../modules/desktop/sddm-theme.nix
     ../../modules/services/printing.nix
+    ../../modules/desktop/terminal.nix
 
     ../../modules/programs/base.nix
     ../../modules/programs/shell.nix
