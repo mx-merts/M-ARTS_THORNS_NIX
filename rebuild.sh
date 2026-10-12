@@ -1,131 +1,131 @@
 #!/usr/bin/env bash
-# /etc/nixos/rebuild.sh — Akilli rebuild modulu
-# Akis: git add -A -> status + onay -> dry rebuild -> onay -> switch -> onay -> push -> ozet
-# Kurallar:
-#   - Yeni dosyalar otomatik git'e eklenir (flake "does not exist" tuzagi kapanir)
-#   - Her asamanin ciktisi tam haliyle terminalde gorunur
-#   - Dry basarisizsa switch calismaz, push yapilmaz
-#   - Switch basarisizsa sayac harcanmaz, push yapilmaz
-#   - Tum sorularda Enter = Hayir (guvenli varsayilan)
-# NOT: set -e bilerek YOK — hatalari yakalayip ozet gostermek icin
+# /etc/nixos/rebuild.sh — Smart rebuild module
+# Flow: git add -A -> status + confirm -> dry rebuild -> confirm -> switch -> confirm -> push -> summary
+# Rules:
+#   - New files are staged automatically (avoids the flake "does not exist" trap)
+#   - Full output of every stage is shown in the terminal
+#   - If dry fails: no switch, no push
+#   - If switch fails: counter is not consumed, no push
+#   - Enter = No on all prompts (safe default)
+# NOTE: set -e is deliberately OMITTED — errors are caught so the summary can still be shown
 
 COUNT_FILE=/etc/nixos/.rebuild-count
 
-ONAY="verilmedi"
-DRY_RESULT="yapilmadi"
-REBUILD_RESULT="yapilmadi"
-PUSH_RESULT="yapilmadi"
+CONFIRM="not given"
+DRY_RESULT="not run"
+REBUILD_RESULT="not run"
+PUSH_RESULT="not run"
 GRUB_LABEL="-"
 
-ozet() {
+summary() {
   echo ""
-  echo "================= REBUILD OZETI ================="
-  printf "%-16s: %s\n" "git add -A" "tamam"
-  printf "%-16s: %s\n" "onay" "$ONAY"
+  echo "================= REBUILD SUMMARY ================="
+  printf "%-16s: %s\n" "git add -A" "done"
+  printf "%-16s: %s\n" "confirmation" "$CONFIRM"
   printf "%-16s: %s\n" "dry rebuild" "$DRY_RESULT"
-  printf "%-16s: %s\n" "gercek rebuild" "$REBUILD_RESULT"
-  printf "%-16s: %s\n" "GRUB etiketi" "$GRUB_LABEL"
+  printf "%-16s: %s\n" "real rebuild" "$REBUILD_RESULT"
+  printf "%-16s: %s\n" "GRUB label" "$GRUB_LABEL"
   printf "%-16s: %s\n" "git push" "$PUSH_RESULT"
-  echo "================================================="
+  echo "==================================================="
 }
 
 ask() {
-  # 0 = evet, 1 = hayir. Enter = hayir (guvenli varsayilan)
-  local cevap
-  read -r -p "$1 [e/H]: " cevap
-  case "$cevap" in
-    e|E|evet|Evet|EVET) return 0 ;;
+  # 0 = yes, 1 = no. Enter = no (safe default)
+  local answer
+  read -r -p "$1 [y/N]: " answer
+  case "$answer" in
+    y|Y|yes|Yes|YES) return 0 ;;
     *) return 1 ;;
   esac
 }
 
 echo ""
-echo "=============== 1/5 GIT HAZIRLIK ==============="
+echo "=============== 1/5 GIT PREP ==============="
 git -C /etc/nixos add -A
 echo "--- git status ---"
 git -C /etc/nixos status
 echo ""
-echo "--- staged degisiklik istatistigi ---"
+echo "--- staged changes stat ---"
 git -C /etc/nixos diff --cached --stat
 echo ""
 
-if ! ask "Bu degisikliklerle devam edilsin mi?"; then
-  ONAY="REDDEDILDI — islem iptal"
-  ozet
+if ! ask "Continue with these changes?"; then
+  CONFIRM="DENIED — aborted"
+  summary
   exit 0
 fi
-ONAY="verildi"
+CONFIRM="given"
 
-# GRUB etiketi icin aday sayac (sadece switch basarili olursa dosyaya yazilir)
+# Candidate GRUB label (written to file only if the switch succeeds)
 N=$(( $(cat "$COUNT_FILE" 2>/dev/null || echo 0) + 1 ))
 
 echo ""
 echo "=============== 2/5 DRY REBUILD ================"
-echo "dry-activate: config tam derlenir + degisiklik raporu gosterilir."
-echo "HICBIR SEY uygulanmaz: sayac, GRUB, calisan sistem degismez."
-echo "Aday GRUB etiketi: T-${N} (dry ve switch ayni etiketle degerlendirilir)"
+echo "dry-activate: fully builds the config + prints a change report."
+echo "NOTHING is applied: counter, GRUB and the running system stay untouched."
+echo "Candidate GRUB label: T-${N} (dry and switch are evaluated with the same label)"
 echo ""
 if NIXOS_LABEL_VERSION=":-:-:T-${N}:-:-:" nixos-rebuild dry-activate --flake /etc/nixos#portable --impure "$@"; then
-  DRY_RESULT="BASARILI"
+  DRY_RESULT="SUCCESS"
   echo ""
-  echo ">>> Dry rebuild BASARILI."
+  echo ">>> Dry rebuild PASSED."
 else
-  DRY_RESULT="BASARISIZ"
+  DRY_RESULT="FAILED"
   echo ""
-  echo ">>> Dry rebuild BASARISIZ! Hatayi yukaridan incele. Sistem degismedi."
-  ozet
+  echo ">>> Dry rebuild FAILED! Inspect the error above. System unchanged."
+  summary
   exit 1
 fi
 
-if ! ask "Gercek rebuild (switch) yapilsin mi?"; then
-  REBUILD_RESULT="atlandi (kullanici)"
-  ozet
+if ! ask "Proceed with the real rebuild (switch)?"; then
+  REBUILD_RESULT="skipped (user)"
+  summary
   exit 0
 fi
 
 echo ""
-echo "============ 3/5 GERCEK REBUILD + SWITCH ============"
+echo "============ 3/5 REAL REBUILD + SWITCH ============"
 echo ""
 if NIXOS_LABEL_VERSION=":-:-:T-${N}:-:-:" nixos-rebuild switch --flake /etc/nixos#portable --impure "$@"; then
-  REBUILD_RESULT="BASARILI"
+  REBUILD_RESULT="SUCCESS"
   echo "$N" > "$COUNT_FILE"
   GRUB_LABEL="T-${N}"
   echo ""
-  echo ">>> Switch BASARILI. Sayac yazildi: T-${N}"
+  echo ">>> Switch PASSED. Counter written: T-${N}"
 else
-  REBUILD_RESULT="BASARISIZ"
-  GRUB_LABEL="T-${N} (harcanmadi)"
+  REBUILD_RESULT="FAILED"
+  GRUB_LABEL="T-${N} (not consumed)"
   echo ""
-  echo ">>> Switch BASARISIZ! Sayac yazilmadi (T-${N} harcanmadi)."
-  echo ">>> Sistem onceki config ile calismaya devam ediyor. Push yapilmaz."
-  ozet
+  echo ">>> Switch FAILED! Counter not written (T-${N} not consumed)."
+  echo ">>> System keeps running the previous config. No push will be made."
+  summary
   exit 1
 fi
 
-if ! ask "GitHub'a push edilsin mi?"; then
-  PUSH_RESULT="atlandi (kullanici)"
-  ozet
+if ! ask "Push to GitHub?"; then
+  PUSH_RESULT="skipped (user)"
+  summary
   exit 0
 fi
 
 echo ""
 echo "=============== 4/5 GIT PUSH ================"
-read -r -p "Commit mesaji (bos = otomatik tarih-saat): " COMMIT_MSG
+read -r -p "Commit message (empty = automatic date-time): " COMMIT_MSG
 echo ""
 if [ -n "$COMMIT_MSG" ]; then
   if /etc/nixos/push.sh "$COMMIT_MSG"; then
-    PUSH_RESULT="BASARILI"
+    PUSH_RESULT="SUCCESS"
   else
-    PUSH_RESULT="BASARISIZ"
+    PUSH_RESULT="FAILED"
   fi
 else
   if /etc/nixos/push.sh; then
-    PUSH_RESULT="BASARILI"
+    PUSH_RESULT="SUCCESS"
   else
-    PUSH_RESULT="BASARISIZ"
+    PUSH_RESULT="FAILED"
   fi
 fi
 
 echo ""
-echo "================= 5/5 BITTI ================="
-ozet
+echo "================= 5/5 DONE ================="
+summary
