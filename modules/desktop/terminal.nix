@@ -20,7 +20,8 @@
     background_blur  64
     window_padding_width 10
     confirm_os_window_close 0
-    cursor_shape     block
+    cursor_shape     beam
+    cursor_trail     1
     enable_audio_bell no
     tab_bar_style    powerline
     tab_powerline_style slanted
@@ -42,6 +43,19 @@
     inactive_tab_foreground #cdd6f4
     inactive_tab_background #313244
     inactive_tab_font_style normal
+
+    # Kısayollar (end-4/dots-hyprland'dan)
+    map ctrl+c           copy_or_interrupt
+    map page_up          scroll_page_up
+    map page_down        scroll_page_down
+    map ctrl+plus        change_font_size all +1
+    map ctrl+equal       change_font_size all +1
+    map ctrl+kp_add      change_font_size all +1
+    map ctrl+minus       change_font_size all -1
+    map ctrl+underscore  change_font_size all -1
+    map ctrl+kp_subtract change_font_size all -1
+    map ctrl+0           change_font_size all 0
+    map ctrl+kp_0        change_font_size all 0
 
     color0  #45475a
     color8  #585b70
