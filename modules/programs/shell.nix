@@ -7,18 +7,38 @@
 { config, lib, pkgs, ... }:
 
 {
-  programs.zsh = {
+    programs.zsh = {
     enable = true;
-    ohMyZsh = {
-      enable = true;
-      theme = "robbyrussell";
-      plugins = [ "git" "sudo" "history-substring-search" ];
+    enableCompletion = true;
+    autosuggestions.enable = true;
+    syntaxHighlighting.enable = true;
+    histSize = 50000;
+    setOptions = [
+      "HIST_IGNORE_DUPS"
+      "HIST_IGNORE_SPACE"
+      "SHARE_HISTORY"
+      "AUTO_CD"
+    ];
+
+    shellAliases = {
+      ls  = "eza --icons --group-directories-first";
+      ll  = "eza -l --icons --group-directories-first --git";
+      la  = "eza -la --icons --group-directories-first --git";
+      lt  = "eza --tree --level=2 --icons";
+      cat = "bat --paging=never";
+      y   = "yazi";
+      lg  = "lazygit";
     };
+
     interactiveShellInit = ''
+      zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
+      zstyle ':completion:*' menu select
+
+      eval "$(${pkgs.atuin}/bin/atuin init zsh --disable-up-arrow)"
+
       fastfetch --config /etc/fastfetch/config.jsonc
     '';
   };
-
   environment.systemPackages = with pkgs; [
     fastfetch
   ];

@@ -1,27 +1,6 @@
 { config, lib, pkgs, ... }:
 
 {
-  # ─── Fish Shell ───
-  programs.fish = {
-    enable = true;
-    interactiveShellInit = ''
-      set -g fish_greeting ""  # Açılışta "Welcome to fish" mesajını kapatır
-      starship init fish | source
-    '';
-    shellAliases = {
-      ls = "eza --icons --group-directories-first";
-      ll = "eza -l --icons --group-directories-first";
-      la = "eza -la --icons --group-directories-first";
-      cat = "bat";
-      grep = "rg";
-      find = "fd";
-      cd = "zoxide";
-    };
-  };
-
-  # Varsayılan shell'i fish yap
-  users.defaultUserShell = pkgs.fish;
-
   # ─── Starship (Catppuccin Mocha) ───
   programs.starship = {
     enable = true;
@@ -32,23 +11,29 @@
         "$directory"
         "$git_branch"
         "$git_status"
+        "$nix_shell"
+        "$cmd_duration"
+        "$line_break"
         "$character"
       ];
 
       directory = {
         style = "bold mauve";
         truncation_length = 3;
+        truncation_symbol = "…/";
       };
-
-      git_branch = {
-        style = "bold lavender";
+      git_branch = { style = "bold lavender"; symbol = " "; };
+      git_status = { style = "bold red"; };
+      nix_shell = {
         symbol = " ";
+        format = "[$symbol$state]($style) ";
+        style = "bold sky";
       };
-
-      git_status = {
-        style = "bold red";
+      cmd_duration = {
+        min_time = 2000;
+        format = "[ $duration]($style) ";
+        style = "yellow";
       };
-
       character = {
         success_symbol = "[❯](bold green)";
         error_symbol = "[❯](bold red)";
@@ -85,17 +70,7 @@
     };
   };
 
-  # ─── Sistem Paketleri ───
-  environment.systemPackages = with pkgs; [
-    kitty
-    eza
-    bat
-    fd
-    ripgrep
-    zoxide
-    fzf
-    starship
-  ];
+  environment.systemPackages = [ pkgs.kitty ];
 
   # ─── Kitty (Catppuccin Mocha + Şeffaflık + Blur) ───
   environment.etc."xdg/kitty/kitty.conf".text = ''
