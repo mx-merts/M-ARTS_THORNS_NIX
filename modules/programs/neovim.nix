@@ -19,7 +19,8 @@
     gcc           # treesitter parser derlemesi icin
     xclip         # sistem panosu (clipboard) destegi
     nodejs        # js/ts LSP runtime'i
-
+    unzip         # copilot.lua dil sunucusunu acmak icin
+	
     # --- LSP sunuculari (lsp.lua ile eslesir) ---
     rust-analyzer                       # Rust
     clang-tools                         # C/C++ (clangd + lldb-dap)
