@@ -20,6 +20,7 @@
     background_blur  64
     window_padding_width 10
     confirm_os_window_close 0
+    allow_remote_control yes
     cursor_shape     beam
     cursor_trail     1
     enable_audio_bell no
