@@ -28,7 +28,7 @@
     ruff                                # Python (lint + format)
     vscode-langservers-extracted        # html/css/json/eslint
     typescript-language-server          # JS/TS (top-level isim)
-    dockerfile-language-server-nodejs   # Dockerfile
+    dockerfile-language-server   # Dockerfile
     cmake-language-server               # CMake
     taplo                               # TOML
     nixd                                # NIX (bu repo icin sart)

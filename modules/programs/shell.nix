@@ -35,6 +35,8 @@
       zstyle ':completion:*' menu select
 
       eval "$(${pkgs.atuin}/bin/atuin init zsh --disable-up-arrow)"
+      source ${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.plugin.zsh
+      eval "$(${pkgs.pay-respects}/bin/pay-respects zsh --alias)"
 
       fastfetch --config /etc/fastfetch/config.jsonc
     '';

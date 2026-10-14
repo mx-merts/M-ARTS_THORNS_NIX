@@ -11,23 +11,43 @@
     ripgrep
     fd
     btop
-    yazi          # terminal dosya yoneticisi
-    delta         # guzel git diff
-    tealdeer      # tldr: kisa, ornekli man
-    atuin         # aranabilir shell gecmisi
+    yazi
+    delta
+    tealdeer
+    atuin
     jq
+
+    # Sistem/dosya bilgisi
+    dust          # klasor boyutlari (du yerine)
+    duf           # disk durumu (df yerine)
+    procs         # surec listesi (ps yerine)
+
+    # Gunluk yardimcilar
+    ouch          # tek komutla arsiv ac/olustur
+    glow          # terminalde markdown oku
+    trash-cli     # rm yerine cop kutusu
+    pay-respects  # yanlis komutu duzeltir
+    hyperfine     # komut hiz olcumu
+    tokei         # kod satiri istatistigi
+    gping         # grafikli ping
+
+    # NixOS araclari
+    nvd           # iki nesil arasi paket farki
+    nix-output-monitor  # build ilerleme agaci (nom)
   ];
 
-  # nix-direnv: klasore girince flake/shell ortami otomatik yuklenir
+  programs.nh = {
+    enable = true;
+    flake = "/etc/nixos";
+  };
+
   programs.direnv = {
     enable = true;
     nix-direnv.enable = true;
   };
 
-  # z <klasor> ile hizli gecis (zsh entegrasyonu otomatik)
   programs.zoxide.enable = true;
 
-  # Ctrl+T (dosya sec), Alt+C (klasore atla), ** + Tab tamamlama
   programs.fzf = {
     keybindings = true;
     fuzzyCompletion = true;
