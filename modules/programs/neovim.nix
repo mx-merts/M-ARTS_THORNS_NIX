@@ -34,6 +34,8 @@
     nixd                                # NIX (bu repo icin sart)
     bash-language-server                # Bash
     lua-language-server                 # Lua (nvim config'i icin)
+    lldb                                # lldb-dap (debug) icin
+    docker-compose-language-service     # docker-compose LSP
 
     # --- Formatterlar (conform.nvim ile eslesir) ---
     prettierd
