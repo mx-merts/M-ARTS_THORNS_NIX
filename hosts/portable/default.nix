@@ -35,6 +35,8 @@
     ../../modules/programs/shell.nix
     ../../modules/programs/cli-tools.nix
     ../../modules/programs/neovim.nix
+    ../../modules/programs/neovim.nix
+    ../../modules/programs/nvim-config.nix
     ../../modules/programs/jrun.nix
     ../../modules/programs/lrun.nix
     ../../modules/apps/development.nix
