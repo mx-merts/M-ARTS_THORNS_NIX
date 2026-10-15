@@ -34,6 +34,7 @@
     taplo                               # TOML
     nixd                                # NIX (bu repo icin sart)
     bash-language-server                # Bash
+    emmet-language-server               # HTML/CSS Emmet (h1<Tab> gibi)
     lua-language-server                 # Lua (nvim config'i icin)
     lldb                                # lldb-dap (debug) icin
     docker-compose-language-service     # docker-compose LSP
