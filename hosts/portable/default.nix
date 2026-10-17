@@ -27,6 +27,7 @@
     ../../modules/security/nocer
 
     ../../modules/desktop/kde.nix
+    ../../modules/desktop/hyprland.nix
     ../../modules/desktop/sddm-theme.nix
     ../../modules/services/printing.nix
     ../../modules/desktop/terminal.nix
