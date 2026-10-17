@@ -1,0 +1,8 @@
+{
+  "name": "kisisel-snippetler",
+  "contributes": {
+    "snippets": [
+      { "language": "html", "path": "./html.json" }
+    ]
+  }
+}

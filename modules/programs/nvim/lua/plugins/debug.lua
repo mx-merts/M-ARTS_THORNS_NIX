@@ -3,7 +3,7 @@ return {
   {
     "mfussenegger/nvim-dap",
     keys = {
-      { "<F5>", function() require("dap").continue() end, desc = "Debug baslat/devam" },
+      { "<leader>dc", function() require("dap").continue() end, desc = "Debug baslat/devam" },
       { "<F10>", function() require("dap").step_over() end, desc = "Step over" },
       { "<F11>", function() require("dap").step_into() end, desc = "Step into" },
       { "<F12>", function() require("dap").step_out() end, desc = "Step out" },
@@ -24,7 +24,7 @@ return {
           type = "lldb",
           request = "launch",
           program = function()
-            return vim.fn.input("Binary yolu: ", vim.fn.getcwd() .. "/", "file")
+            return vim.fn.input("Binary yolu: ", "/tmp/nvim-run-out", "file")
           end,
           cwd = "${workspaceFolder}",
           stopOnEntry = false,

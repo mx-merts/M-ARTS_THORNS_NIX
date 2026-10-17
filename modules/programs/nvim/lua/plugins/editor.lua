@@ -105,12 +105,12 @@ return {
   },
 
   -- Kaydederken otomatik format (prettier karsiligi)
+  -- Formatlayıcılar: otomatik değil, elle çalışır (Space fm)
   {
     "stevearc/conform.nvim",
-    event = "BufWritePre",
     cmd = { "ConformInfo" },
     keys = {
-      { "<leader>fm", function() require("conform").format({ async = true }) end, desc = "Formatla" },
+      { "<leader>fm", function() require("conform").format({ async = true, lsp_format = "fallback" }) end, desc = "Formatla" },
     },
     config = function()
       require("conform").setup({
@@ -132,10 +132,6 @@ return {
           cpp = { "clang-format" },
           nix = { "nixpkgs_fmt" },
           toml = { "taplo" },
-        },
-        format_on_save = {
-          timeout_ms = 1000,
-          lsp_format = "fallback",
         },
       })
     end,

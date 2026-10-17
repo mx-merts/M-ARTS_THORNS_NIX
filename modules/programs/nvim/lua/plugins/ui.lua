@@ -12,10 +12,26 @@ return {
         hl_styles = { floats = "dark", sidebars = "dark" },
       })
 
-      -- Imlec: ince cizgi, pembe (hem acik hem koyu zeminde gorunur)
+      -- Mevcut renk grubunu koruyup sadece verilen alanları değiştirir
+      local function tweak(name, opts)
+        local cur = vim.api.nvim_get_hl(0, { name = name, link = false })
+        vim.api.nvim_set_hl(0, name, vim.tbl_extend("force", cur, opts))
+      end
+
+      -- Imleç ve açık temada okunabilirlik
       local function cursor_hl()
         vim.api.nvim_set_hl(0, "Cursor", { bg = "#f92672", fg = "#ffffff" })
         vim.api.nvim_set_hl(0, "lCursor", { bg = "#f92672", fg = "#ffffff" })
+
+        if vim.o.background == "light" then
+          tweak("Normal", { fg = "#111111" })
+          tweak("Comment", { fg = "#5a5a5a" })
+          tweak("LineNr", { fg = "#666666" })
+          tweak("NonText", { fg = "#777777" })
+          tweak("ErrorMsg", { fg = "#b00020", bold = true })
+          tweak("WarningMsg", { fg = "#8a5a00", bold = true })
+          tweak("MoreMsg", { fg = "#00600f", bold = true })
+        end
       end
       vim.api.nvim_create_autocmd("ColorScheme", { callback = cursor_hl })
 

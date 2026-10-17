@@ -12,7 +12,7 @@ Flake tabanlı, modüler ve deklaratif bir NixOS yapılandırması. Ayarlar, kon
 | Terminal aracı (CLI) | `modules/programs/cli-tools.nix` |
 | Kabuk/terminal ayarları | `modules/programs/shell.nix` |
 | Neovim (kurulum ve sistem geneli ayarlar) | `modules/programs/neovim.nix` |
-| Neovim kişisel ayarları | `~/.config/nvim/init.lua` (elle yönetilir) |
+| Neovim kişisel ayarları (eklentiler, kısayollar, tema) | `modules/programs/nvim/` (`~/.config/nvim` buraya bağlanır, `sudo` gerekmez) |
 | `.jar` dosyası çalıştırma | `modules/programs/jrun.nix` |
 | Yerel (native) Linux uygulaması çalıştırma | `modules/programs/lrun.nix` |
 | Uygulama (oyun, geliştirme, ofis) | `modules/apps/` altında ilgili dosya |
@@ -47,7 +47,7 @@ Flake tabanlı, modüler ve deklaratif bir NixOS yapılandırması. Ayarlar, kon
 | `modules/security/` | Güvenlik duvarı, sertleştirme, AppArmor, Firejail, ClamAV + Lynis ve NOCER (sertifika yöneticisi) |
 | `modules/desktop/` | Masaüstü ortamları (KDE; ileride Hyprland) |
 | `modules/services/` | Arka plan servisleri (yazıcı, Flatpak) |
-| `modules/programs/` | Amaca göre ayrılmış kullanıcı paketleri (`base`, `shell`, `cli-tools`, `neovim`, `jrun`, `lrun`) |
+| `modules/programs/` | Amaca göre ayrılmış kullanıcı paketleri (`base`, `shell`, `cli-tools`, `neovim`, `nvim-config`, `jrun`, `lrun`) ve Neovim ayarları (`nvim/`) |
 | `modules/apps/` | Geliştirme, oyun, ofis, tasarım, günlük kullanım uygulamaları ve Minecraft |
 | `modules/users/` | Kullanıcı tanımları |
 | `assets/sddm/pixel-night-city/` | SDDM giriş ekranı teması (`pixel-night-city`) dosyaları |
@@ -88,6 +88,8 @@ sudo /etc/nixos/push.sh "commit mesajı"
 
 > **Not:** Bu depoya `root` kullanıcısı SSH anahtarıyla (`/root/.ssh/id_ed25519`) bağlanır. Bu yüzden git komutları `sudo` ile çalıştırılmalıdır.
 
+> **Not:** Sadece Neovim ayarlarını (`modules/programs/nvim/`) değiştirdiysen rebuild gerekmez, `sudo /etc/nixos/push.sh` yeterli. Rebuild yalnızca sistem paketleri (`neovim.nix`) için gerekir.
+
 ## Rebuild akışı
 
 `rebuild.sh` etkileşimli çalışır ve her aşamada onay ister:
@@ -127,8 +129,7 @@ sudo /etc/nixos/push.sh "commit mesajı"
 Aşağıdakiler şu an `~/.config` altında elle yönetiliyor:
 
 - KDE Plasma görsel ayarları (tema, simgeler, panel düzeni, kısayollar)
-- SDDM teması
-- Neovim kişisel ayarları (`~/.config/nvim/init.lua`)
+
 
 İleride Home Manager ve plasma-manager entegrasyonuyla bunlar da deklaratif olarak yönetilecek.
 

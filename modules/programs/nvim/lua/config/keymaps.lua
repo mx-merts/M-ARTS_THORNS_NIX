@@ -14,9 +14,9 @@ map("n", "<C-j>", "<C-w>j")
 map("n", "<C-k>", "<C-w>k")
 map("n", "<C-l>", "<C-w>l")
 
--- Açık dosyalar arası geçiş (Shift+h/l, sekmeler gibi)
-map("n", "<S-h>", "<cmd>bprevious<cr>")
-map("n", "<S-l>", "<cmd>bnext<cr>")
+-- Açık dosyalar arası geçiş (Shift+h/l, sekmeler gibi) şimdilik kaldırıldı
+-- map("n", "<S-h>", "<cmd>bprevious<cr>")
+-- map("n", "<S-l>", "<cmd>bnext<cr>")
 
 -- Seçili metni taşı (Visual modda J/K)
 map("v", "J", ":m '>+1<cr>gv=gv")
@@ -88,3 +88,38 @@ map("n", "<leader>?", function() require("config.cheatsheet").toggle() end, { de
 map("n", "<F2>", vim.lsp.buf.rename, { desc = "Yeniden adlandır" })
 map("n", "<leader>bd", "<cmd>bdelete<cr>", { desc = "Sekmeyi kapat" })
 map("n", "<leader>fc", "<cmd>Telescope commands<cr>", { desc = "Komutlar" })
+
+
+
+-- ===== Calistirma (F5) =====
+map({ "n", "i" }, "<F5>", function()
+  vim.cmd("stopinsert")
+  require("config.run").run()
+end, { desc = "Dosyayi calistir" })
+map("n", "<leader>rc", function() require("config.run").close() end, { desc = "Cikti terminalini kapat" })
+
+-- Terminalden cikis ve geri donus
+map("t", "<Esc><Esc>", [[<C-\><C-n>]], { desc = "Terminal normal mod" })
+map("t", "<C-h>", [[<C-\><C-n><C-w>h]])
+map("t", "<C-j>", [[<C-\><C-n><C-w>j]])
+map("t", "<C-k>", [[<C-\><C-n><C-w>k]])
+map("t", "<C-l>", [[<C-\><C-n><C-w>l]])
+
+-- ===== Sekmeler (buffer) =====
+map({ "n", "i" }, "<C-Tab>", "<Cmd>BufferLineCycleNext<CR>", { desc = "Sonraki sekme" })
+map({ "n", "i" }, "<C-S-Tab>", "<Cmd>BufferLineCyclePrev<CR>", { desc = "Onceki sekme" })
+
+local function close_buffer()
+  local cur = vim.api.nvim_get_current_buf()
+  if #vim.fn.getbufinfo({ buflisted = 1 }) > 1 then
+    vim.cmd("bprevious")
+  end
+  vim.cmd("bdelete " .. cur)
+end
+map({ "n", "i" }, "<A-w>", close_buffer, { desc = "Sekmeyi kapat" })
+map("n", "<leader>bd", close_buffer, { desc = "Sekmeyi kapat" })
+map("n", "<leader>bp", "<Cmd>BufferLinePick<CR>", { desc = "Sekme sec (harfle)" })
+
+-- ===== Bolmeler (window) =====
+map("n", "<leader>sv", "<cmd>vsplit<cr>", { desc = "Dikey bol" })
+map("n", "<leader>sh", "<cmd>split<cr>", { desc = "Yatay bol" })

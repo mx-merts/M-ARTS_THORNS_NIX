@@ -7,6 +7,14 @@ set -e
 
 cd /etc/nixos
 
+# Nvim config yedegi (repo disindaki ~/.config/nvim'i dotfiles/ altina kopyalar)
+if [ -d /home/m-arts/.config/nvim ]; then
+  mkdir -p /etc/nixos/dotfiles
+  rm -rf /etc/nixos/dotfiles/nvim
+  cp -r /home/m-arts/.config/nvim /etc/nixos/dotfiles/nvim
+  rm -rf /etc/nixos/dotfiles/nvim/.git
+fi
+
 MSG="${1:-"update: $(date '+%Y-%m-%d %H:%M')"}"
 
 # Working-tree changes? Commit them first.
