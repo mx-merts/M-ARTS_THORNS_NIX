@@ -28,6 +28,7 @@
 
     ../../modules/desktop/kde.nix
     ../../modules/desktop/hyprland.nix
+       ../../modules/desktop/serpantinum.nix
     ../../modules/desktop/sddm-theme.nix
     ../../modules/services/printing.nix
     ../../modules/desktop/terminal.nix
