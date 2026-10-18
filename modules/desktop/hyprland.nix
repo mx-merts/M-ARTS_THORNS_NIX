@@ -102,6 +102,8 @@ in
     wl-clipboard         # wl-copy / wl-paste
     grim slurp           # ekran görüntüsü
     brightnessctl        # parlaklık
+    cliphist             # pano geçmişi (Serpantinum)
+    playerctl            # medya tuşları (Serpantinum)
     kdePackages.dolphin  # dosya yöneticisi
   ];
 
