@@ -13,6 +13,13 @@
     daemon.enable = true;
     clamonacc.enable = true;
     daemon.settings = {
+      # 16 thread'in yarisi: tarama sirasinda sistem akici kalir
+      MaxThreads = 8;
+      MaxQueue = 200;
+
+      MaxFileSize = "100M";
+      MaxScanSize = "300M";
+
       OnAccessIncludePath = [
         "/home/m-arts/Downloads"
         "/home/m-arts/Desktop"
@@ -20,10 +27,16 @@
       ];
       OnAccessPrevention = true;
       OnAccessExcludeUname = "clamav";
+      OnAccessExcludeRootUID = true;
+
       ExcludePath = [
         "^/home/m-arts/.local/share/Steam/"
         "^/home/m-arts/.var/"
         "^/home/m-arts/Games/"
+        "^/home/m-arts/.cache/"
+        "^/home/m-arts/.local/share/Trash/"
+        "/node_modules/"
+        "/\\.git/objects/"
       ];
     };
   };

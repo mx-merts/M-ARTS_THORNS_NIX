@@ -41,6 +41,7 @@
     ../../modules/programs/nvim-config.nix
     ../../modules/programs/jrun.nix
     ../../modules/programs/lrun.nix
+        ../../modules/programs/cscan.nix
     ../../modules/apps/development.nix
     ../../modules/apps/gaming.nix
     ../../modules/apps/office.nix
