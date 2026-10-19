@@ -2,10 +2,12 @@
 let
   cscan = pkgs.writeShellApplication {
     name = "CSCAN";
+    excludeShellChecks = [ "SC2016" "SC2002" ];
     runtimeInputs = with pkgs; [ clamav findutils coreutils gnugrep ];
     text = ''
       TARGET="''${1:-.}"
-      CHUNK="''${CSCAN_CHUNK:-300}"
+      CHUNK="''${CSCAN_CHUNK:-200}"
+      JOBS="''${CSCAN_JOBS:-8}"
 
       if [ ! -e "$TARGET" ]; then
         echo "CSCAN: not found: $TARGET" >&2
@@ -13,7 +15,6 @@ let
       fi
       TARGET="$(realpath "$TARGET")"
 
-      # clamd.conf'taki ExcludePath ile ayni mantik
       EXCLUDE='/\.local/share/Steam/|/\.var/|/Games/|/\.cache/|/\.local/share/Trash/|/node_modules/|/\.git/objects/'
 
       TMP="$(mktemp -d)"
@@ -27,46 +28,56 @@ let
         echo "Taranacak dosya yok."
         exit 0
       fi
-      echo "Toplam $TOTAL dosya taranacak."
+      echo "Toplam $TOTAL dosya, $JOBS paralel is parcacigi."
 
-      split -l "$CHUNK" "$TMP/all" "$TMP/chunk."
-
-      DONE=0
-      INFECTED=0
-      ERRORS=0
+      split -l "$CHUNK" -d -a 5 "$TMP/all" "$TMP/chunk."
       START="$(date +%s)"
 
-      for list in "$TMP"/chunk.*; do
-        N="$(wc -l < "$list")"
-        RC=0
-        OUT="$(clamdscan --fdpass --multiscan --infected --no-summary \
-                --file-list="$list" 2>&1)" || RC=$?
+      # Gruplari JOBS adet paralel clamdscan sureciyle tara
+      (
+        find "$TMP" -maxdepth 1 -name 'chunk.[0-9]*' ! -name '*.out' ! -name '*.rc' -print0 |
+          xargs -0 -P "$JOBS" -I{} sh -c \
+            'clamdscan --fdpass --infected --no-summary --file-list="$1" > "$1.out" 2>&1; echo $? > "$1.rc"' _ {}
+      ) &
+      BG=$!
 
-        if [ "$RC" -eq 1 ]; then
-          FOUND="$(printf '%s\n' "$OUT" | grep -c 'FOUND' || true)"
-          INFECTED=$((INFECTED + FOUND))
-          printf '\r\033[K'
-          printf '%s\n' "$OUT" | grep 'FOUND' || true
-        elif [ "$RC" -ge 2 ]; then
-          ERRORS=$((ERRORS + 1))
-          printf '\r\033[K'
-          printf '%s\n' "$OUT" | head -n 3 >&2
-        fi
-
-        DONE=$((DONE + N))
+      progress() {
+        DONE=0
+        for rc in "$TMP"/chunk.*.rc; do
+          [ -e "$rc" ] || continue
+          DONE=$((DONE + $(wc -l < "''${rc%.rc}")))
+        done
+        INFECTED="$(cat "$TMP"/chunk.*.out 2>/dev/null | grep -c 'FOUND' || true)"
         PCT=$((DONE * 100 / TOTAL))
         FILLED=$((PCT * 30 / 100))
         BAR="$(printf '%*s' "$FILLED" "" | tr ' ' '#')"
-        ELAPSED=$(( $(date +%s) - START ))
-        printf '\r\033[K[%-30s] %3d%%  %d/%d  tehdit: %d  %ds' \
-          "$BAR" "$PCT" "$DONE" "$TOTAL" "$INFECTED" "$ELAPSED"
+        printf '\r\033[K[%-30s] %3d%%  %d/%d  tehdit: %s  %ds' \
+          "$BAR" "$PCT" "$DONE" "$TOTAL" "$INFECTED" "$(( $(date +%s) - START ))"
+      }
+
+      while kill -0 "$BG" 2>/dev/null; do
+        progress
+        sleep 0.5
+      done
+      wait "$BG" || true
+      progress
+      echo ""
+
+      ERRORS=0
+      for rc in "$TMP"/chunk.*.rc; do
+        [ -e "$rc" ] || continue
+        if [ "$(cat "$rc")" -ge 2 ]; then
+          ERRORS=$((ERRORS + 1))
+          head -n 3 "''${rc%.rc}.out" >&2
+        fi
       done
 
       echo ""
-      echo "=== Bitti: $TOTAL dosya, $INFECTED tehdit, $ERRORS hatali grup, $(( $(date +%s) - START )) sn ==="
+      cat "$TMP"/chunk.*.out 2>/dev/null | grep 'FOUND' || echo "Tehdit bulunmadi."
+      echo "=== Bitti: $TOTAL dosya, $ERRORS hatali grup, $(( $(date +%s) - START )) sn ==="
 
-      if [ "$INFECTED" -gt 0 ]; then exit 1; fi
       if [ "$ERRORS" -gt 0 ]; then exit 2; fi
+      if cat "$TMP"/chunk.*.out 2>/dev/null | grep -q 'FOUND'; then exit 1; fi
     '';
   };
 in
