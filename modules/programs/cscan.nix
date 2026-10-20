@@ -3,18 +3,20 @@ let
   cscan = pkgs.writeShellApplication {
     name = "CSCAN";
     excludeShellChecks = [ "SC2016" "SC2002" ];
-    runtimeInputs = with pkgs; [ clamav findutils coreutils gnugrep ];
+    runtimeInputs = with pkgs; [ clamav findutils coreutils gnugrep gawk ];
     text = ''
       CHUNK="''${CSCAN_CHUNK:-200}"
       JOBS="''${CSCAN_JOBS:-8}"
+      LOG=/var/log/cscan.log
 
       usage() {
-        echo "kullanim: sudo CSCAN <mod>"
-        echo "  -ROT    root (/) taranir, /home haric"
-        echo "  -BOT    /boot taranir"
-        echo "  -HOME   /home taranir"
-        echo "  -RAW    hepsi: / + /home + /boot + harici diskler"
-        echo "  <yol>   verilen yol(lar) taranir"
+        echo "kullanim: sudo CSCAN <mod> [--TERMINATE]"
+        echo "  -ROT        root (/) taranir, /home haric"
+        echo "  -BOT        /boot taranir"
+        echo "  -HOME       /home taranir"
+        echo "  -RAW        hepsi: / + /home + /boot + harici diskler"
+        echo "  <yol>       verilen yol(lar) taranir"
+        echo "  --TERMINATE bulunan tehditleri KALICI olarak siler"
       }
 
       if [ "$(id -u)" -ne 0 ]; then
@@ -22,10 +24,20 @@ let
         exit 1
       fi
 
-      if [ $# -eq 0 ]; then
+      TERMINATE=0
+      ARGS=()
+      for a in "$@"; do
+        case "''${a^^}" in
+          --TERMINATE|-TERMINATE) TERMINATE=1 ;;
+          *) ARGS+=("$a") ;;
+        esac
+      done
+
+      if [ ''${#ARGS[@]} -eq 0 ]; then
         usage
         exit 1
       fi
+      set -- "''${ARGS[@]}"
 
       MODE="''${1^^}"
       MODE="''${MODE#-}"
@@ -82,6 +94,10 @@ let
           ;;
       esac
 
+      if [ "$TERMINATE" -eq 1 ]; then
+        echo "UYARI: --TERMINATE aktif, bulunan tehditler tarama sonunda SILINECEK."
+      fi
+
       TOTAL="$(wc -l < "$TMP/all")"
       if [ "$TOTAL" -eq 0 ]; then
         echo "Taranacak dosya yok."
@@ -91,6 +107,7 @@ let
 
       split -l "$CHUNK" -d -a 5 "$TMP/all" "$TMP/chunk."
       START="$(date +%s)"
+      START_DATE="$(date '+%Y:%m:%d %H:%M:%S')"
 
       (
         find "$TMP" -maxdepth 1 -name 'chunk.[0-9]*' ! -name '*.out' ! -name '*.rc' -print0 |
@@ -105,7 +122,7 @@ let
           [ -e "$rc" ] || continue
           DONE=$((DONE + $(wc -l < "''${rc%.rc}")))
         done
-        INFECTED="$(cat "$TMP"/chunk.*.out 2>/dev/null | grep -c 'FOUND' || true)"
+        INFECTED="$(cat "$TMP"/chunk.*.out 2>/dev/null | grep -c ' FOUND$' || true)"
         PCT=$((DONE * 100 / TOTAL))
         FILLED=$((PCT * 30 / 100))
         BAR="$(printf '%*s' "$FILLED" "" | tr ' ' '#')"
@@ -121,20 +138,78 @@ let
       progress
       echo ""
 
+      END_DATE="$(date '+%Y:%m:%d %H:%M:%S')"
+      ELAPSED=$(( $(date +%s) - START ))
+
       ERRORS=0
       for rc in "$TMP"/chunk.*.rc; do
         [ -e "$rc" ] || continue
         if [ "$(cat "$rc")" -ge 2 ]; then
           ERRORS=$((ERRORS + 1))
-          head -n 3 "''${rc%.rc}.out" >&2
         fi
       done
 
-      echo ""
-      cat "$TMP"/chunk.*.out 2>/dev/null | grep 'FOUND' || echo "Tehdit bulunmadi."
-      echo "=== Bitti: $TOTAL dosya, $ERRORS hatali grup, $(( $(date +%s) - START )) sn ==="
+      cat "$TMP"/chunk.*.out 2>/dev/null | grep ' FOUND$' > "$TMP/found" || true
+      cat "$TMP"/chunk.*.out 2>/dev/null | grep '^ERROR' > "$TMP/errlines" || true
+      FOUND_COUNT="$(wc -l < "$TMP/found")"
+      ERR_FILES="$(wc -l < "$TMP/errlines")"
 
-      if cat "$TMP"/chunk.*.out 2>/dev/null | grep -q 'FOUND'; then exit 1; fi
+      echo ""
+      if [ "$FOUND_COUNT" -gt 0 ]; then
+        echo "--- BULUNAN TEHDITLER ---"
+        cat "$TMP/found"
+        while IFS= read -r line; do
+          printf '%s  %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$line" >> "$LOG"
+        done < "$TMP/found"
+        echo ""
+      fi
+
+      REMOVED=0
+      REMOVE_FAILED=0
+      if [ "$TERMINATE" -eq 1 ] && [ "$FOUND_COUNT" -gt 0 ]; then
+        echo "--- TERMINATE: tehditler siliniyor ---"
+        while IFS= read -r line; do
+          f="''${line%: *}"
+          if rm -f -- "$f" 2>/dev/null && [ ! -e "$f" ]; then
+            REMOVED=$((REMOVED + 1))
+            echo "SILINDI : $f"
+            printf '%s  SILINDI %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$f" >> "$LOG"
+          else
+            REMOVE_FAILED=$((REMOVE_FAILED + 1))
+            echo "SILINEMEDI: $f (salt-okunur dosya sistemi olabilir)" >&2
+          fi
+        done < "$TMP/found"
+        echo ""
+      fi
+
+      if [ "$ERR_FILES" -gt 0 ]; then
+        echo "--- ERISILEMEYEN DOSYALAR (ilk 5) ---"
+        head -n 5 "$TMP/errlines"
+        echo ""
+      fi
+
+      DATA="$(xargs -d '\n' -a "$TMP/all" stat -c %s 2>/dev/null | awk '{s+=$1} END{printf "%.2f MiB", s/1048576}' || true)"
+      ENGINE="$(clamdscan --version 2>/dev/null | head -n 1 || true)"
+
+      echo "----------- SCAN SUMMARY -----------"
+      echo "Engine version: ''${ENGINE:-bilinmiyor}"
+      echo "Scanned files: $TOTAL"
+      echo "Infected files: $FOUND_COUNT"
+      echo "Removed files: $REMOVED"
+      echo "Remove failed: $REMOVE_FAILED"
+      echo "Inaccessible files: $ERR_FILES"
+      echo "Failed groups: $ERRORS"
+      echo "Data scanned: ''${DATA:-?}"
+      echo "Time: $ELAPSED sec ($((ELAPSED / 60)) m $((ELAPSED % 60)) s)"
+      echo "Start Date: $START_DATE"
+      echo "End Date:   $END_DATE"
+
+      if [ "$FOUND_COUNT" -gt 0 ] && [ "$TERMINATE" -eq 0 ]; then
+        echo ""
+        echo "Silmek icin ayni komutu --TERMINATE ile tekrar calistir."
+      fi
+
+      if [ "$FOUND_COUNT" -gt 0 ]; then exit 1; fi
       if [ "$ERRORS" -gt 0 ]; then exit 2; fi
     '';
   };
