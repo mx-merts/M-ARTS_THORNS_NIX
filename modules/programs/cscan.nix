@@ -5,35 +5,93 @@ let
     excludeShellChecks = [ "SC2016" "SC2002" ];
     runtimeInputs = with pkgs; [ clamav findutils coreutils gnugrep ];
     text = ''
-      TARGET="''${1:-.}"
       CHUNK="''${CSCAN_CHUNK:-200}"
       JOBS="''${CSCAN_JOBS:-8}"
 
-      if [ ! -e "$TARGET" ]; then
-        echo "CSCAN: not found: $TARGET" >&2
+      usage() {
+        echo "kullanim: sudo CSCAN <mod>"
+        echo "  -ROT    root (/) taranir, /home haric"
+        echo "  -BOT    /boot taranir"
+        echo "  -HOME   /home taranir"
+        echo "  -RAW    hepsi: / + /home + /boot + harici diskler"
+        echo "  <yol>   verilen yol(lar) taranir"
+      }
+
+      if [ "$(id -u)" -ne 0 ]; then
+        echo "CSCAN: root gerekli, 'sudo CSCAN ...' ile calistir." >&2
         exit 1
       fi
-      TARGET="$(realpath "$TARGET")"
 
-      EXCLUDE='/\.local/share/Steam/|/\.var/|/Games/|/\.cache/|/\.local/share/Trash/|/node_modules/|/\.git/objects/'
+      if [ $# -eq 0 ]; then
+        usage
+        exit 1
+      fi
+
+      MODE="''${1^^}"
+      MODE="''${MODE#-}"
+      MODE="''${MODE#-}"
 
       TMP="$(mktemp -d)"
       trap 'rm -rf "$TMP"' EXIT
 
-      echo "Dosyalar listeleniyor: $TARGET"
-      find "$TARGET" -type f -print 2>/dev/null | grep -Ev "$EXCLUDE" > "$TMP/all" || true
+      media_dirs() {
+        for m in /run/media/*/*; do
+          if [ -d "$m" ]; then echo "$m"; fi
+        done
+      }
+
+      case "$MODE" in
+        H|HELP)
+          usage
+          exit 0
+          ;;
+        ROT)
+          echo "Mod: ROT (/ , /home haric)"
+          find / -xdev -path /home -prune -o -type f -print > "$TMP/all" 2>/dev/null || true
+          ;;
+        BOT)
+          echo "Mod: BOT (/boot)"
+          find /boot -xdev -type f -print > "$TMP/all" 2>/dev/null || true
+          ;;
+        HOME)
+          echo "Mod: HOME (/home)"
+          find /home -xdev -type f -print > "$TMP/all" 2>/dev/null || true
+          ;;
+        RAW)
+          echo "Mod: RAW (/ + /home + /boot + harici diskler)"
+          {
+            find / -xdev -type f -print 2>/dev/null || true
+            find /boot -xdev -type f -print 2>/dev/null || true
+            media_dirs | while read -r m; do
+              find "$m" -xdev -type f -print 2>/dev/null || true
+            done
+          } > "$TMP/all"
+          ;;
+        *)
+          TARGETS=()
+          for t in "$@"; do
+            if [ ! -e "$t" ]; then
+              echo "CSCAN: bulunamadi: $t" >&2
+              usage
+              exit 1
+            fi
+            TARGETS+=("$(realpath "$t")")
+          done
+          echo "Mod: ozel yol (''${TARGETS[*]})"
+          find "''${TARGETS[@]}" -xdev -type f -print > "$TMP/all" 2>/dev/null || true
+          ;;
+      esac
 
       TOTAL="$(wc -l < "$TMP/all")"
       if [ "$TOTAL" -eq 0 ]; then
         echo "Taranacak dosya yok."
         exit 0
       fi
-      echo "Toplam $TOTAL dosya, $JOBS paralel is parcacigi."
+      echo "Toplam $TOTAL dosya, $JOBS paralel is parcacigi. Hicbir sey atlanmiyor."
 
       split -l "$CHUNK" -d -a 5 "$TMP/all" "$TMP/chunk."
       START="$(date +%s)"
 
-      # Gruplari JOBS adet paralel clamdscan sureciyle tara
       (
         find "$TMP" -maxdepth 1 -name 'chunk.[0-9]*' ! -name '*.out' ! -name '*.rc' -print0 |
           xargs -0 -P "$JOBS" -I{} sh -c \
@@ -76,8 +134,8 @@ let
       cat "$TMP"/chunk.*.out 2>/dev/null | grep 'FOUND' || echo "Tehdit bulunmadi."
       echo "=== Bitti: $TOTAL dosya, $ERRORS hatali grup, $(( $(date +%s) - START )) sn ==="
 
-      if [ "$ERRORS" -gt 0 ]; then exit 2; fi
       if cat "$TMP"/chunk.*.out 2>/dev/null | grep -q 'FOUND'; then exit 1; fi
+      if [ "$ERRORS" -gt 0 ]; then exit 2; fi
     '';
   };
 in
