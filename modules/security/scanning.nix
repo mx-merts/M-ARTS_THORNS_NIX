@@ -17,8 +17,10 @@
       MaxThreads = 8;
       MaxQueue = 200;
 
-      MaxFileSize = "100M";
-      MaxScanSize = "300M";
+      MaxFileSize = "4000M";
+      MaxScanSize = "4000M";
+      MaxScanTime = 0;
+      MaxFiles = 1000000;
 
       OnAccessIncludePath = [
         "/home/m-arts/Downloads"
@@ -29,15 +31,6 @@
       OnAccessExcludeUname = "clamav";
       OnAccessExcludeRootUID = true;
 
-      ExcludePath = [
-        "^/home/m-arts/.local/share/Steam/"
-        "^/home/m-arts/.var/"
-        "^/home/m-arts/Games/"
-        "^/home/m-arts/.cache/"
-        "^/home/m-arts/.local/share/Trash/"
-        "/node_modules/"
-        "/\\.git/objects/"
-      ];
     };
   };
 
