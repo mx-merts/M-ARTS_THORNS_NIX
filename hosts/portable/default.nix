@@ -24,6 +24,7 @@
     ../../modules/security/apparmor.nix
     ../../modules/security/sandboxing.nix
     ../../modules/security/scanning.nix
+    ../../modules/security/auditing.nix
     ../../modules/security/nocer
 
     ../../modules/desktop/kde.nix
