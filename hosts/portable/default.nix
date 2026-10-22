@@ -26,6 +26,7 @@
     ../../modules/security/scanning.nix
     ../../modules/security/auditing.nix
     ../../modules/security/nocer
+    ../../modules/security/spine
 
     ../../modules/desktop/kde.nix
     ../../modules/desktop/hyprland.nix
@@ -65,6 +66,7 @@
   environment.sessionVariables.NIXOS_OZONE_WL = "1";
 
   programs.nocer.enable = true;
+  programs.spine.enable = true;
 
   security.sudo.enable = true;
   security.sudo.wheelNeedsPassword = true;
