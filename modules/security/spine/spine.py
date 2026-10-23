@@ -7,6 +7,7 @@ Modes:
   spine status   overview (default)
   spine log      recent events
   spine test     (needs sudo) write a test event to check the pipeline
+  spine event    (needs sudo) write an event; used by other tools (thorns-aide)
 
 SPINE only observes and reports. It never blocks, kills or deletes anything.
 """
@@ -432,6 +433,14 @@ def cmd_test():
     print("test event written; a notification should appear within a few seconds")
 
 
+def cmd_event(args):
+    try:
+        emit(args.sev, args.src, args.title, args.detail)
+    except PermissionError:
+        print("spine: run with sudo: sudo spine event ...", file=sys.stderr)
+        sys.exit(1)
+
+
 def main():
     p = argparse.ArgumentParser(prog="spine", description="SPINE security event watcher")
     sub = p.add_subparsers(dest="cmd")
@@ -441,6 +450,11 @@ def main():
     lg = sub.add_parser("log", help="show recent events")
     lg.add_argument("-n", type=int, default=20)
     sub.add_parser("test", help="write a test event (needs sudo)")
+    ev = sub.add_parser("event", help="write an event (needs sudo)")
+    ev.add_argument("sev", choices=["info", "notice", "warn", "crit"])
+    ev.add_argument("src")
+    ev.add_argument("title")
+    ev.add_argument("detail", nargs="?", default="")
     args = p.parse_args()
     if args.cmd == "daemon":
         run_daemon()
@@ -450,6 +464,8 @@ def main():
         cmd_log(args.n)
     elif args.cmd == "test":
         cmd_test()
+    elif args.cmd == "event":
+        cmd_event(args)
     else:
         cmd_status()
 

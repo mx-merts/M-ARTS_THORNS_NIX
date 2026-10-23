@@ -16,6 +16,7 @@ DRY_RESULT="not run"
 REBUILD_RESULT="not run"
 PUSH_RESULT="not run"
 GRUB_LABEL="-"
+AIDE_RESULT="not run"
 
 summary() {
   echo ""
@@ -25,6 +26,7 @@ summary() {
   printf "%-16s: %s\n" "dry rebuild" "$DRY_RESULT"
   printf "%-16s: %s\n" "real rebuild" "$REBUILD_RESULT"
   printf "%-16s: %s\n" "GRUB label" "$GRUB_LABEL"
+  printf "%-16s: %s\n" "AIDE (boot)" "$AIDE_RESULT"
   printf "%-16s: %s\n" "git push" "$PUSH_RESULT"
   echo "==================================================="
 }
@@ -55,6 +57,25 @@ if ! ask "Continue with these changes?"; then
   exit 0
 fi
 CONFIRM="given"
+
+# AIDE: compare /boot with its baseline BEFORE touching it. A rebuild changes
+# /boot legitimately, so anything that differs now happened outside a rebuild.
+AIDE_CHECK="skipped"
+if command -v thorns-aide >/dev/null 2>&1; then
+  echo ""
+  echo "=============== AIDE PRE-CHECK (/boot) ==============="
+  if thorns-aide pre-rebuild --alert; then
+    AIDE_CHECK="clean"
+  else
+    AIDE_CHECK="DIFFERS"
+    if ! ask "AIDE: /boot changed outside a rebuild (see above). Continue anyway?"; then
+      CONFIRM="aborted (AIDE /boot differs)"
+      AIDE_RESULT="DIFFERS - aborted"
+      summary
+      exit 0
+    fi
+  fi
+fi
 
 # Candidate GRUB label (written to file only if the switch succeeds)
 N=$(( $(cat "$COUNT_FILE" 2>/dev/null || echo 0) + 1 ))
@@ -89,6 +110,13 @@ echo ""
 if NIXOS_LABEL_VERSION=":-:-:T-${N}:-:-:" nixos-rebuild switch --flake /etc/nixos#portable --impure "$@"; then
   REBUILD_RESULT="SUCCESS"
   echo "$N" > "$COUNT_FILE"
+  if command -v thorns-aide >/dev/null 2>&1; then
+    if thorns-aide post-rebuild; then
+      AIDE_RESULT="pre-check ${AIDE_CHECK}, baseline refreshed"
+    else
+      AIDE_RESULT="pre-check ${AIDE_CHECK}, baseline refresh FAILED"
+    fi
+  fi
   GRUB_LABEL="T-${N}"
   echo ""
   echo ">>> Switch PASSED. Counter written: T-${N}"

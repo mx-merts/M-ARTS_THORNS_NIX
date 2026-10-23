@@ -17,8 +17,17 @@
     script = ''
       set -eu
       cd /etc/nixos
+
+      # AIDE: check /boot first, so an unattended upgrade never re-baselines a
+      # boot partition that was changed outside a rebuild (SPINE gets an alert).
+      AIDE=/run/current-system/sw/bin/thorns-aide
+      AIDE_CLEAN=0
+      if [ -x "$AIDE" ] && "$AIDE" pre-rebuild --alert; then AIDE_CLEAN=1; fi
+
       nix flake update nixpkgs
       nixos-rebuild boot --flake /etc/nixos#portable
+
+      if [ "$AIDE_CLEAN" = 1 ]; then "$AIDE" post-rebuild; fi
     '';
     serviceConfig = {
       Type = "oneshot";
