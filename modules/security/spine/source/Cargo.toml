@@ -1,0 +1,22 @@
+[package]
+name = "spine"
+version = "0.2.0"
+edition = "2021"
+authors = ["M-ARTS"]
+description = "SPINE - local security event hub for NixOS (observes and reports, never blocks)"
+license = "CC-BY-NC-SA-4.0"
+repository = "https://github.com/mx-merts/M-ARTS_THORNS_NIX"
+
+[[bin]]
+name = "spine"
+path = "src/main.rs"
+
+[dependencies]
+serde_json = "1"
+libc = "0.2"
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
+panic = "abort"
