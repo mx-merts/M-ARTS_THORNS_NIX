@@ -55,7 +55,9 @@ pub fn kv(text: &str) -> HashMap<String, String> {
                 i += 1;
             }
         } else {
-            while i < b.len() && !b[i].is_ascii_whitespace() {
+            // Stop at ANY control byte or space. auditd's ENRICHED format puts a
+            // 0x1d separator right after the last raw field ("key=(null)<GS>ARCH=...").
+            while i < b.len() && b[i] > b' ' {
                 i += 1;
             }
         }
@@ -75,7 +77,7 @@ fn classify(key: &str, from_store: bool, failed: bool) -> (String, &'static str)
         other => (format!("Audit event: {other}"), "notice"),
     };
     if failed {
-        title.push_str(" (denied)");
+        title.push_str(" (failed)");
         if sev == "crit" {
             sev = "warn";
         }
@@ -135,7 +137,7 @@ pub fn handle_event(hub: &Hub, ev: &AuditEvent) {
     }
 
     let (title, sev) = classify(key, from_store, failed);
-    let dk = format!("audit|{key}|{}", if key == "boot" { "" } else { target.as_str() });
+    let dk = format!("audit|{key}|{sev}|{}", if key == "boot" { "" } else { target.as_str() });
     hub.emit(sev, &src, &title, &detail, Some((&dk, 600)));
 }
 
@@ -207,12 +209,13 @@ impl AuditTail {
 
     /// Handles events whose records stopped arriving in an earlier cycle.
     fn flush(&mut self, hub: &Hub) {
-        let done: Vec<String> = self
+        let mut done: Vec<String> = self
             .pending
             .iter()
             .filter(|(_, p)| p.cycle < self.cycle)
             .map(|(s, _)| s.clone())
             .collect();
+        done.sort_by_key(|s| s.parse::<u64>().unwrap_or(0));
         for serial in done {
             if let Some(p) = self.pending.remove(&serial) {
                 handle_event(hub, &AuditEvent { records: p.records });
@@ -302,7 +305,8 @@ mod tests {
         let p = Paths::temp("classify");
         let hub = Hub::new(p.clone());
         run(&hub, 300, "boot", "/tmp/evil", "\"/boot/grub/grub.cfg\"", "yes");
-        run(&hub, 301, "boot", STORE, "\"/boot/grub/grub.cfg\"", "yes"); // deduped: same key
+        run(&hub, 301, "boot", STORE, "\"/boot/grub/grub.cfg\"", "yes"); // other severity: reported too
+        run(&hub, 305, "boot", STORE, "\"/boot/grub/grub.cfg\"", "yes"); // same key and severity: deduped
         run(&hub, 302, "kernel-modules", STORE, "\"x\"", "yes"); // counted only
         run(&hub, 303, "kernel-modules", "/home/m-arts/insmod", "\"x\"", "yes");
         // hex encoded name with a space; denied write from outside the store
@@ -310,10 +314,11 @@ mod tests {
         let ev = read_events(&p.events).unwrap();
         let got: Vec<(&str, &str)> = ev.iter().map(|e| (e["sev"].as_str().unwrap(), e["title"].as_str().unwrap())).collect();
         assert_eq!(got[0], ("crit", "Boot partition changed"));
-        assert_eq!(got[1], ("crit", "Kernel module loaded outside the Nix store"));
-        assert_eq!(got[2], ("warn", "/root/.ssh changed (denied)"));
-        assert!(ev[2]["detail"].as_str().unwrap().contains("/root/.ssh/my key"));
-        assert_eq!(ev.len(), 3);
+        assert_eq!(got[1], ("notice", "Boot partition changed"));
+        assert_eq!(got[2], ("crit", "Kernel module loaded outside the Nix store"));
+        assert_eq!(got[3], ("warn", "/root/.ssh changed (failed)"));
+        assert!(ev[3]["detail"].as_str().unwrap().contains("/root/.ssh/my key"));
+        assert_eq!(ev.len(), 4);
         assert_eq!(hub.stats().1, 2);
     }
 
@@ -357,5 +362,77 @@ mod tests {
         let ev = read_events(&p.events).unwrap();
         assert_eq!(ev.len(), 1);
         assert_eq!(ev[0]["sev"], "warn");
+    }
+
+    #[test]
+    fn finished_events_are_handled_in_serial_order() {
+        let p = Paths::temp("order");
+        let hub = Hub::new(p.clone());
+        let mut tail = AuditTail::new(p.audit_log.clone());
+        append(&p.audit_log, "");
+        tail.poll(&hub).unwrap();
+        let path = quoted("/home/m-arts/.config/autostart/.x");
+        for i in 0..20u32 {
+            let comm = format!("c{i}");
+            append(&p.audit_log, &event_lines(100 + i, "autostart", STORE, &comm, &path, "CREATE", "yes"));
+        }
+        tail.poll(&hub).unwrap();
+        tail.poll(&hub).unwrap();
+        let ev = read_events(&p.events).unwrap();
+        assert_eq!(ev.len(), 1);
+        assert!(ev[0]["detail"].as_str().unwrap().starts_with("c0 "), "the FIRST event must be kept");
+    }
+
+    #[test]
+    fn a_louder_event_is_not_hidden_by_an_earlier_quieter_one() {
+        let p = Paths::temp("masking");
+        let hub = Hub::new(p.clone());
+        // A normal rebuild write from the Nix store, then (inside the 10 minute
+        // window) a write from an unknown binary: both must be reported.
+        run(&hub, 1, "boot", STORE, "\"/boot/grub/grub.cfg\"", "yes");
+        run(&hub, 2, "boot", "/tmp/evil", "\"/boot/EFI/BOOT/BOOTX64.EFI\"", "yes");
+        let ev = read_events(&p.events).unwrap();
+        let sevs: Vec<&str> = ev.iter().map(|e| e["sev"].as_str().unwrap()).collect();
+        assert_eq!(sevs, vec!["notice", "crit"]);
+    }
+
+    #[test]
+    fn enriched_extras_do_not_leak_into_values() {
+        // ENRICHED log format: "<raw fields><0x1d>ARCH=x86_64 SYSCALL=bpf AUID=..."
+        let f = kv("success=yes key=(null)\x1dARCH=x86_64 SYSCALL=bpf AUID=\"unset\"");
+        assert_eq!(f["key"], "(null)");
+        assert_eq!(f["ARCH"], "x86_64");
+        assert_eq!(f["AUID"], "\"unset\"");
+        let f = kv("comm=\"touch\" key=\"autostart\"\x1dARCH=x86_64");
+        assert_eq!(f["key"], "\"autostart\"");
+        assert_eq!(f["ARCH"], "x86_64");
+    }
+
+    #[test]
+    fn enriched_events_without_a_rule_key_are_ignored() {
+        let p = Paths::temp("enriched-nokey");
+        let hub = Hub::new(p.clone());
+        let sys = "arch=c000003e syscall=321 success=yes exit=3 auid=4294967295 uid=0 comm=\"systemd\" exe=\"/nix/store/x-systemd-261.3/lib/systemd/systemd\" subj=unconfined key=(null)\x1dARCH=x86_64 SYSCALL=bpf AUID=\"unset\" UID=\"root\"";
+        handle_event(&hub, &AuditEvent { records: vec![("SYSCALL".to_string(), sys.to_string())] });
+        assert!(read_events(&p.events).is_err(), "no event may be written for a record without a rule key");
+    }
+
+    #[test]
+    fn enriched_events_with_a_rule_key_still_work() {
+        let p = Paths::temp("enriched-key");
+        let hub = Hub::new(p.clone());
+        let text = event_lines(900, "autostart", STORE, "touch", "\"/home/m-arts/.config/autostart/.t\"", "CREATE", "yes")
+            .replace("key=\"autostart\"\n", "key=\"autostart\"\x1dARCH=x86_64 SYSCALL=openat AUID=\"m-arts\"\n");
+        assert!(text.contains('\x1d'));
+        let records = text
+            .lines()
+            .filter_map(parse_record)
+            .map(|(t, _, r)| (t.to_string(), r.to_string()))
+            .collect();
+        handle_event(&hub, &AuditEvent { records });
+        let ev = read_events(&p.events).unwrap();
+        assert_eq!(ev.len(), 1);
+        assert_eq!(ev[0]["src"], "audit:autostart");
+        assert_eq!(ev[0]["title"], "Autostart entry changed");
     }
 }
