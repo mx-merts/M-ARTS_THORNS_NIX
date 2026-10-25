@@ -37,8 +37,22 @@ usage: spine <command>
   notify          run desktop notifications (user service)
   version";
 
+/// Rust ignores SIGPIPE, so `spine status | head -n 5` would panic when `head`
+/// closes the pipe (and with panic = "abort" that dumps core and triggers the
+/// desktop crash reporter). One-shot commands restore the Unix default instead:
+/// the process just ends quietly, like any other command-line tool.
+fn restore_sigpipe() {
+    // SAFETY: signal() with SIG_DFL has no preconditions; this runs once at
+    // startup, before any thread is created.
+    unsafe { libc::signal(libc::SIGPIPE, libc::SIG_DFL); }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    // The two services keep Rust's default (write errors are handled, not fatal).
+    if !matches!(args.first().map(String::as_str), Some("daemon") | Some("notify")) {
+        restore_sigpipe();
+    }
     let code = match args.first().map(String::as_str) {
         None | Some("status") => cli::status(),
         Some("log") => cli::log(&args[1..]),

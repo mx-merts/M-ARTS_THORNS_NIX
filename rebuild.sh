@@ -1,15 +1,18 @@
 #!/usr/bin/env bash
 # /etc/nixos/rebuild.sh — Smart rebuild module
-# Flow: git add -A -> status + confirm -> dry rebuild -> confirm -> switch -> confirm -> push -> summary
+# Flow: git add -A -> status + confirm -> [lock] -> dry rebuild -> confirm -> switch -> confirm -> push -> summary
 # Rules:
 #   - New files are staged automatically (avoids the flake "does not exist" trap)
 #   - Full output of every stage is shown in the terminal
 #   - If dry fails: no switch, no push
 #   - If switch fails: counter is not consumed, no push
 #   - Enter = No on all prompts (safe default)
+#   - The lock (/run/thorns-rebuild.lock) is shared with thorns-upgrade:
+#     only one of them may touch /boot or flake.lock at a time. Held until exit.
 # NOTE: set -e is deliberately OMITTED — errors are caught so the summary can still be shown
 
 COUNT_FILE=/etc/nixos/.rebuild-count
+LOCK_FILE=/run/thorns-rebuild.lock
 
 CONFIRM="not given"
 DRY_RESULT="not run"
@@ -17,12 +20,14 @@ REBUILD_RESULT="not run"
 PUSH_RESULT="not run"
 GRUB_LABEL="-"
 AIDE_RESULT="not run"
+LOCK_RESULT="not acquired"
 
 summary() {
   echo ""
   echo "================= REBUILD SUMMARY ================="
   printf "%-16s: %s\n" "git add -A" "done"
   printf "%-16s: %s\n" "confirmation" "$CONFIRM"
+  printf "%-16s: %s\n" "rebuild lock" "$LOCK_RESULT"
   printf "%-16s: %s\n" "dry rebuild" "$DRY_RESULT"
   printf "%-16s: %s\n" "real rebuild" "$REBUILD_RESULT"
   printf "%-16s: %s\n" "GRUB label" "$GRUB_LABEL"
@@ -57,6 +62,34 @@ if ! ask "Continue with these changes?"; then
   exit 0
 fi
 CONFIRM="given"
+
+# ── Rebuild lock ─────────────────────────────────────────────────────────────
+# Shared with thorns-upgrade (modules/core/auto-upgrade.nix). Guarantees that
+# nothing else mutates /boot or flake.lock between the AIDE pre-check and the
+# post-rebuild re-baseline (the 2026-10-25 race). /run is tmpfs: no stale locks.
+exec 9>"$LOCK_FILE"
+if flock -n 9; then
+  LOCK_RESULT="acquired"
+else
+  echo ""
+  echo "=============== REBUILD LOCK BUSY ==============="
+  echo "thorns-upgrade or another rebuild is running right now."
+  if ask "Wait up to 10 minutes for the lock?"; then
+    if flock -w 600 9; then
+      LOCK_RESULT="acquired after wait"
+    else
+      LOCK_RESULT="timeout (10 min)"
+      REBUILD_RESULT="skipped (lock timeout)"
+      summary
+      exit 1
+    fi
+  else
+    LOCK_RESULT="busy — aborted"
+    REBUILD_RESULT="skipped (user)"
+    summary
+    exit 0
+  fi
+fi
 
 # AIDE: compare /boot with its baseline BEFORE touching it. A rebuild changes
 # /boot legitimately, so anything that differs now happened outside a rebuild.

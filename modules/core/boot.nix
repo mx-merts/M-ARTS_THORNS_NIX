@@ -17,5 +17,9 @@
     configurationLimit = 10;
   };
 
-  boot.initrd.systemd.enable = true;
+  # NOT (25 Ekim 2026): "boot.initrd.systemd.enable = true;" satiri kaldirildi.
+  # 23 Ekim 2026 nixpkgs'inde (rev 3ec63636...) scripted initrd tamamen
+  # kaldirildi; systemd initrd artik tek ve varsayilan yol, secenek reddediliyor.
+  # Bu satir thorns-upgrade'i degerlendirme asamasinda kirdi ("no longer has
+  # any effect; please remove it"). Davranis degismiyor: zaten true idi.
 }

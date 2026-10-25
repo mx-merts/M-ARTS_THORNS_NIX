@@ -10,12 +10,26 @@
     wants = [ "network-online.target" ];
     path = with pkgs; [
       coreutils gnutar xz.bin gzip gitMinimal
+      util-linux
       config.nix.package.out config.programs.ssh.package
       config.system.build.nixos-rebuild
     ];
     environment.HOME = "/root";
     script = ''
       set -eu
+
+      # rebuild.sh ile ayni kilidi paylas: ikisi ayni anda /boot'a veya
+      # flake.lock'a dokunamaz. (25 Ekim 2026'da upgrade, rebuild.sh'in
+      # switch'i ile cakisti: AIDE yanlis kritik uyari verdi ve flake.lock
+      # dogrulanmadan GitHub'a gitti.) /run tmpfs oldugu icin kalinti kilit
+      # olmaz; kilit 1 saat alinamazsa bu hafta vazgecilir, Persistent=true
+      # sayesinde sonraki hafta tekrar denenir.
+      exec 9>/run/thorns-rebuild.lock
+      if ! flock -w 3600 9; then
+        echo "thorns-upgrade: kilit 1 saat sonra hala mesgul, bu hafta vazgectim."
+        exit 1
+      fi
+
       cd /etc/nixos
 
       # AIDE: check /boot first, so an unattended upgrade never re-baselines a
