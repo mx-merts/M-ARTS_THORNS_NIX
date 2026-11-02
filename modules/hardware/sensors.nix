@@ -12,6 +12,4 @@
     "drivetemp"  # SATA/NVMe disk sicakligi
   ];
 
-  # BIOS/ACPI'nin rezerve ettigi Super I/O portlarina surucunun erismesine izin verir.
-  boot.kernelParams = [ "acpi_enforce_resources=lax" ];
 }

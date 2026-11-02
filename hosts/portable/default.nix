@@ -19,6 +19,7 @@
     ../../modules/hardware/bluetooth.nix
     ../../modules/hardware/peripherals.nix
     ../../modules/hardware/sensors.nix
+    ../../modules/hardware/excalibur-wmi.nix
 
     ../../modules/security/firewall.nix
     ../../modules/security/hardening.nix

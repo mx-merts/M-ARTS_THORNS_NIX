@@ -1,5 +1,21 @@
 {
   "nodes": {
+    "excalibur-wmi": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1778415927,
+        "narHash": "sha256-3GLG5w/11LQNBuJ6i8sw6odGoCmf/UB2dDxZLAvQSEo=",
+        "owner": "thekayrasari",
+        "repo": "excalibur",
+        "rev": "ec785aecc0c191c03e580b369542209517a432e2",
+        "type": "github"
+      },
+      "original": {
+        "owner": "thekayrasari",
+        "repo": "excalibur",
+        "type": "github"
+      }
+    },
     "nix-flatpak": {
       "locked": {
         "lastModified": 1790428548,
@@ -50,6 +66,7 @@
     },
     "root": {
       "inputs": {
+        "excalibur-wmi": "excalibur-wmi",
         "nix-flatpak": "nix-flatpak",
         "nixpkgs": "nixpkgs",
         "serpantinum": "serpantinum"
