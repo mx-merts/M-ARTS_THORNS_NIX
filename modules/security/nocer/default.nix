@@ -68,12 +68,20 @@ in
   config = mkIf cfg.enable {
     environment.systemPackages = [ nocer pkgs.fzf pkgs.openssl ];
 
+    # GUVENLIK: Tum state SADECE root'a yazilabilir.
+    # Onceden 0775 root:wheel idi -- kullanici yetkisiyle calisan HERHANGI bir
+    # program sudo'suz sahte CA ekleyebiliyor veya Firefox politikalarini
+    # (zorunlu eklenti, proxy vb.) degistirebiliyordu. Artik degisiklik icin
+    # "sudo nocer" gerekir; okuma (nocer list) herkese acik.
+    # "Z" satiri: daha once kullanici tarafindan olusturulmus dosyalarin
+    # sahipligini de geriye donuk olarak root'a cevirir.
     systemd.tmpfiles.rules = [
-      "d ${cfg.stateDir}              0775 root wheel -"
-      "d ${cfg.stateDir}/certs        0775 root wheel -"
-      "d ${cfg.stateDir}/enabled      0775 root wheel -"
-      "f ${cfg.stateDir}/index.json   0664 root wheel -"
-      "f ${cfg.stateDir}/firefox-policies.json 0664 root wheel -"
+      "d ${cfg.stateDir}              0755 root root -"
+      "d ${cfg.stateDir}/certs        0755 root root -"
+      "d ${cfg.stateDir}/enabled      0755 root root -"
+      "f ${cfg.stateDir}/index.json   0644 root root -"
+      "f ${cfg.stateDir}/firefox-policies.json 0644 root root -"
+      "Z ${cfg.stateDir}              -    root root -"
     ] ++ lib.optionals cfg.manageFirefoxPolicy [
       "d /etc/firefox                0755 root root -"
       "d /etc/firefox/policies       0755 root root -"
@@ -99,7 +107,7 @@ in
       };
     };
 
-   # PAM üzerinden TÜM shell'lere dağıt (login olsun olmasın)
+    # PAM üzerinden TÜM shell'lere dağıt (login olsun olmasın)
     environment.sessionVariables = lib.mkMerge [
       { NOCER_STATE_DIR   = cfg.stateDir;
         NOCER_BUNDLE_PATH = cfg.bundlePath; }

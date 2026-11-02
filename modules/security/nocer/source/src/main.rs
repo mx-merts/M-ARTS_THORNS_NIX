@@ -153,7 +153,7 @@ fn trigger_rebuild() {
 // ───────────────────────── fzf ─────────────────────────
 
 fn run_fzf() -> io::Result<Option<PathBuf>> {
-    let home = env::var("HOME").unwrap_or_default();
+    let home = env::var("SUDO_USER").ok().filter(|u| !u.is_empty() && u != "root").map(|u| format!("/home/{u}")).unwrap_or_else(|| env::var("HOME").unwrap_or_default());
     let dirs = [
         format!("{home}/Downloads"),
         format!("{home}/Desktop"),
