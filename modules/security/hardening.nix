@@ -26,8 +26,15 @@
   # Hibernate'i kapatir ama zaten zram kullandigimiz icin hibernate yok.
   security.protectKernelImage = true;
 
-  security.sudo.execWheelOnly = true;
+  # sudo-rs: sadece wheel grubu calistirabilsin (sudo -> sudo-rs gecisi, bkz. hosts/portable)
+  security.sudo-rs.execWheelOnly = true;
 
   # TTY girisinde yanlis sifre sonrasi 3 sn bekleme (hesap kilidi DEGIL)
   security.pam.services.login.failDelay.delay = 3000000;
+
+  # fwupd KAPALI: Plasma varsayilan olarak aciyor. Sistem okul/baskasinin
+  # bilgisayarina takildiginda KDE Discover O MAKINENIN firmware'ini
+  # guncellemeyi onerebilir -- baskasinin donanimina firmware basilmasin.
+  # Kendi laptopunun firmware guncellemeleri Windows tarafindan yapilir.
+  services.fwupd.enable = lib.mkForce false;
 }
