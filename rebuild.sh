@@ -1,17 +1,24 @@
 #!/usr/bin/env bash
 # /etc/nixos/rebuild.sh — Smart rebuild module
-# Flow: git add -A -> status + confirm -> [lock] -> dry rebuild -> confirm -> switch -> confirm -> push -> summary
+# Flow: git add -A -> status + confirm -> [lock] -> dry rebuild -> confirm
+#       -> pick switch target -> rebuild -> confirm -> push -> summary
 # Rules:
 #   - New files are staged automatically (avoids the flake "does not exist" trap)
 #   - Full output of every stage is shown in the terminal
 #   - If dry fails: no switch, no push
-#   - If switch fails: counter is not consumed, no push
-#   - Enter = No on all prompts (safe default)
+#   - If the rebuild fails: counter is not consumed, no push
+#   - Enter = No on all y/N prompts (safe default); Enter on the target menu
+#     = stay in the config you booted (safe default)
 #   - The lock (/run/thorns-rebuild.lock) is shared with thorns-upgrade:
 #     only one of them may touch /boot or flake.lock at a time. Held until exit.
-#   - Specialisation-aware: if the system was booted into a specialisation
-#     (PRIME, NVIDIA-DESKTOP), the switch stays in it instead of silently
-#     dropping the running session back to the base (DESK) config.
+#   - GRUB is ALWAYS installed from the BASE config ("nixos-rebuild boot"), so
+#     the main menu keeps every entry (NixOS, PRIME, NVIDIA-DESKTOP). The
+#     chosen target is then activated live with "switch-to-configuration test",
+#     which never touches the boot loader.
+#     NEVER use "switch --specialisation": it installs GRUB from the
+#     specialisation's point of view, so the main menu loses the PRIME /
+#     NVIDIA-DESKTOP entries and plain "NixOS" boots the specialisation
+#     (happened 2026-11-02 with T-97/T-98).
 # NOTE: set -e is deliberately OMITTED — errors are caught so the summary can still be shown
 
 COUNT_FILE=/etc/nixos/.rebuild-count
@@ -25,6 +32,7 @@ GRUB_LABEL="-"
 AIDE_RESULT="not run"
 LOCK_RESULT="not acquired"
 SPEC_RESULT="-"
+TARGET_RESULT="-"
 
 summary() {
   echo ""
@@ -32,7 +40,8 @@ summary() {
   printf "%-16s: %s\n" "git add -A" "done"
   printf "%-16s: %s\n" "confirmation" "$CONFIRM"
   printf "%-16s: %s\n" "rebuild lock" "$LOCK_RESULT"
-  printf "%-16s: %s\n" "specialisation" "$SPEC_RESULT"
+  printf "%-16s: %s\n" "booted" "$SPEC_RESULT"
+  printf "%-16s: %s\n" "switch target" "$TARGET_RESULT"
   printf "%-16s: %s\n" "dry rebuild" "$DRY_RESULT"
   printf "%-16s: %s\n" "real rebuild" "$REBUILD_RESULT"
   printf "%-16s: %s\n" "GRUB label" "$GRUB_LABEL"
@@ -65,6 +74,98 @@ detect_specialisation() {
       return 0
     fi
   done
+}
+
+# Interactive target menu. Sets TARGET and TARGET_LABEL:
+#   TARGET=""        -> base config (DESK), activated live
+#   TARGET="<name>"  -> that specialisation, activated live
+#   TARGET="@boot"   -> GRUB only, running system untouched
+#   TARGET="@cancel" -> abort
+# The list of specialisations is read from the current system profile, so a
+# new specialisation shows up here automatically.
+choose_target() {
+  local link i choice mark default=1
+  TARGET_NAMES=("")
+  TARGET_LABELS=("DESK (base config)")
+  for link in /nix/var/nix/profiles/system/specialisation/*; do
+    [ -e "$link" ] || continue
+    TARGET_NAMES+=("$(basename "$link")")
+    TARGET_LABELS+=("$(basename "$link")")
+  done
+  TARGET_NAMES+=("@boot")
+  TARGET_LABELS+=("GRUB only: change nothing now, apply at next reboot")
+
+  for i in "${!TARGET_NAMES[@]}"; do
+    if [ "${TARGET_NAMES[$i]}" = "$SPEC" ]; then default=$((i + 1)); fi
+  done
+
+  while true; do
+    echo ""
+    echo "=============== SWITCH TARGET ==============="
+    echo "GRUB is always installed from the base config (all entries stay in the menu)."
+    echo "Choose what the RUNNING session switches to:"
+    for i in "${!TARGET_NAMES[@]}"; do
+      mark=""
+      if [ $((i + 1)) -eq "$default" ]; then mark="   <- booted (Enter)"; fi
+      printf "  %d) %s%s\n" $((i + 1)) "${TARGET_LABELS[$i]}" "$mark"
+    done
+    echo "  0) cancel"
+    read -r -p "Target [${default}]: " choice
+    [ -z "$choice" ] && choice="$default"
+    case "$choice" in
+      0) TARGET="@cancel"; TARGET_LABEL="cancel"; return 0 ;;
+      *[!0-9]*) echo "Invalid choice: $choice"; continue ;;
+    esac
+    if [ "$choice" -lt 1 ] || [ "$choice" -gt "${#TARGET_NAMES[@]}" ]; then
+      echo "Invalid choice: $choice"
+      continue
+    fi
+    TARGET="${TARGET_NAMES[$((choice - 1))]}"
+    TARGET_LABEL="${TARGET_LABELS[$((choice - 1))]}"
+    if [ "$TARGET" != "@boot" ] && [ "$TARGET" != "$SPEC" ]; then
+      echo ""
+      echo "WARNING: you booted '${SPEC:-DESK}' but picked '${TARGET_LABEL}'."
+      echo "         GPU drivers (NVIDIA / PRIME) cannot be swapped cleanly in a"
+      echo "         running session; the change is only complete after a reboot."
+      echo "         Safer: pick 'GRUB only' and choose the entry in GRUB."
+      if ! ask "Switch the running session to '${TARGET_LABEL}' anyway?"; then
+        continue
+      fi
+    fi
+    return 0
+  done
+}
+
+# The real rebuild.
+#   return 0: built + GRUB installed (+ live activation done, unless GRUB only)
+#   return 1: build or GRUB install failed -> nothing changed
+#   return 2: GRUB installed (new generation exists) but live activation
+#             failed -> a reboot applies it
+do_rebuild() {
+  # 1) Build + set the profile + install GRUB from the BASE config.
+  NIXOS_LABEL_VERSION=":-:-:T-${N}:-:-:" nixos-rebuild boot --flake /etc/nixos#portable --impure "$@" || return 1
+
+  [ "$TARGET" = "@boot" ] && return 0
+
+  # 2) Activate the chosen config of the NEW generation, live only.
+  local top target
+  top="$(readlink -f /nix/var/nix/profiles/system)"
+  if [ -z "$TARGET" ]; then
+    target="$top/bin/switch-to-configuration"
+  else
+    target="$top/specialisation/${TARGET}/bin/switch-to-configuration"
+  fi
+  if [ ! -x "$target" ]; then
+    echo ">>> '${TARGET_LABEL}' not found in the new generation." >&2
+    return 2
+  fi
+  echo ""
+  echo ">>> GRUB installed from the base config. Activating '${TARGET_LABEL}' in the running session (test)..."
+  # Same isolation nixos-rebuild uses: survives if the terminal or session restarts.
+  systemd-run -E LOCALE_ARCHIVE --collect --no-ask-password --pipe --quiet \
+    --service-type=exec --unit=nixos-rebuild-switch-to-configuration \
+    "$target" test || return 2
+  return 0
 }
 
 echo ""
@@ -131,31 +232,22 @@ if command -v thorns-aide >/dev/null 2>&1; then
   fi
 fi
 
-# ── Specialisation detection ─────────────────────────────────────────────────
+# ── Booted config ────────────────────────────────────────────────────────────
 SPEC="$(detect_specialisation)"
-SPEC_ARGS=()
-if [ -n "$SPEC" ]; then
-  SPEC_ARGS=(--specialisation "$SPEC")
-  SPEC_RESULT="$SPEC (kept)"
-else
-  SPEC_RESULT="none (base DESK)"
-fi
+SPEC_RESULT="${SPEC:-DESK (base)}"
 echo ""
-echo "Booted specialisation: ${SPEC:-none (base DESK)}"
+echo "Booted: ${SPEC:-DESK (base)}"
 
-# Candidate GRUB label (written to file only if the switch succeeds)
+# Candidate GRUB label (written to file only if the rebuild succeeds)
 N=$(( $(cat "$COUNT_FILE" 2>/dev/null || echo 0) + 1 ))
 
 echo ""
 echo "=============== 2/5 DRY REBUILD ================"
 echo "dry-activate: fully builds the config + prints a change report."
 echo "NOTHING is applied: counter, GRUB and the running system stay untouched."
-echo "Candidate GRUB label: T-${N} (dry and switch are evaluated with the same label)"
-if [ -n "$SPEC" ]; then
-  echo "NOTE: the dry report below is computed for the BASE config; the real"
-  echo "      switch will activate specialisation '${SPEC}' (nixos-rebuild only"
-  echo "      accepts --specialisation for switch/test)."
-fi
+echo "Candidate GRUB label: T-${N} (dry and real rebuild use the same label)"
+echo "NOTE: the dry report is computed for the BASE config (DESK). The real"
+echo "      rebuild installs GRUB from it and then activates the target you pick."
 echo ""
 if NIXOS_LABEL_VERSION=":-:-:T-${N}:-:-:" nixos-rebuild dry-activate --flake /etc/nixos#portable --impure "$@"; then
   DRY_RESULT="SUCCESS"
@@ -169,36 +261,67 @@ else
   exit 1
 fi
 
-if ! ask "Proceed with the real rebuild (switch${SPEC:+ → $SPEC})?"; then
+if ! ask "Proceed with the real rebuild?"; then
   REBUILD_RESULT="skipped (user)"
   summary
   exit 0
 fi
 
+choose_target
+if [ "$TARGET" = "@cancel" ]; then
+  TARGET_RESULT="cancelled"
+  REBUILD_RESULT="skipped (user)"
+  summary
+  exit 0
+fi
+case "$TARGET" in
+  "")     TARGET_RESULT="DESK (live)" ;;
+  "@boot") TARGET_RESULT="GRUB only (apply at next reboot)" ;;
+  *)      TARGET_RESULT="${TARGET} (live)" ;;
+esac
+
 echo ""
 echo "============ 3/5 REAL REBUILD + SWITCH ============"
 echo ""
-if NIXOS_LABEL_VERSION=":-:-:T-${N}:-:-:" nixos-rebuild switch --flake /etc/nixos#portable --impure "${SPEC_ARGS[@]}" "$@"; then
-  REBUILD_RESULT="SUCCESS"
-  echo "$N" > "$COUNT_FILE"
-  if command -v thorns-aide >/dev/null 2>&1; then
-    if thorns-aide post-rebuild; then
-      AIDE_RESULT="pre-check ${AIDE_CHECK}, baseline refreshed"
-    else
-      AIDE_RESULT="pre-check ${AIDE_CHECK}, baseline refresh FAILED"
-    fi
-  fi
-  GRUB_LABEL="T-${N}"
-  echo ""
-  echo ">>> Switch PASSED. Counter written: T-${N}"
-else
+do_rebuild "$@"
+RC=$?
+
+if [ "$RC" -eq 1 ]; then
   REBUILD_RESULT="FAILED"
   GRUB_LABEL="T-${N} (not consumed)"
   echo ""
-  echo ">>> Switch FAILED! Counter not written (T-${N} not consumed)."
+  echo ">>> Rebuild FAILED! Counter not written (T-${N} not consumed)."
   echo ">>> System keeps running the previous config. No push will be made."
   summary
   exit 1
+fi
+
+# RC 0 or 2: a new generation with label T-N is in GRUB -> consume the counter.
+echo "$N" > "$COUNT_FILE"
+GRUB_LABEL="T-${N}"
+if command -v thorns-aide >/dev/null 2>&1; then
+  if thorns-aide post-rebuild; then
+    AIDE_RESULT="pre-check ${AIDE_CHECK}, baseline refreshed"
+  else
+    AIDE_RESULT="pre-check ${AIDE_CHECK}, baseline refresh FAILED"
+  fi
+fi
+
+if [ "$RC" -eq 2 ]; then
+  REBUILD_RESULT="PARTIAL: in GRUB, live activation FAILED"
+  echo ""
+  echo ">>> T-${N} is installed in GRUB, but activating '${TARGET_LABEL}' live FAILED."
+  echo ">>> Reboot and pick it in GRUB to apply. No push will be made."
+  summary
+  exit 1
+fi
+
+REBUILD_RESULT="SUCCESS"
+echo ""
+if [ "$TARGET" = "@boot" ]; then
+  echo ">>> T-${N} installed in GRUB. Running system unchanged: reboot to apply."
+else
+  echo ">>> Rebuild PASSED, running session is now '${TARGET_LABEL}'. Counter written: T-${N}"
 fi
 
 if ! ask "Push to GitHub?"; then
