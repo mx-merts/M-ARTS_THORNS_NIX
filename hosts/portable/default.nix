@@ -20,6 +20,7 @@
     ../../modules/hardware/peripherals.nix
     ../../modules/hardware/sensors.nix
     ../../modules/hardware/excalibur-wmi.nix
+    ../../modules/hardware/excalibur-rgb.nix
 
     ../../modules/security/firewall.nix
     ../../modules/security/hardening.nix
@@ -69,6 +70,13 @@
   environment.sessionVariables.NIXOS_OZONE_WL = "1";
 
   programs.nocer.enable = true;
+  
+    hardware.excaliburRgb = {
+      enable = true;
+      mode = "rainbow";
+      color = "FFFFFF";
+      brightness = 2;
+    };
   programs.spine.enable = true;
 
   security.sudo.enable = true;
