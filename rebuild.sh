@@ -9,6 +9,9 @@
 #   - Enter = No on all prompts (safe default)
 #   - The lock (/run/thorns-rebuild.lock) is shared with thorns-upgrade:
 #     only one of them may touch /boot or flake.lock at a time. Held until exit.
+#   - Specialisation-aware: if the system was booted into a specialisation
+#     (PRIME, NVIDIA-DESKTOP), the switch stays in it instead of silently
+#     dropping the running session back to the base (DESK) config.
 # NOTE: set -e is deliberately OMITTED — errors are caught so the summary can still be shown
 
 COUNT_FILE=/etc/nixos/.rebuild-count
@@ -21,6 +24,7 @@ PUSH_RESULT="not run"
 GRUB_LABEL="-"
 AIDE_RESULT="not run"
 LOCK_RESULT="not acquired"
+SPEC_RESULT="-"
 
 summary() {
   echo ""
@@ -28,6 +32,7 @@ summary() {
   printf "%-16s: %s\n" "git add -A" "done"
   printf "%-16s: %s\n" "confirmation" "$CONFIRM"
   printf "%-16s: %s\n" "rebuild lock" "$LOCK_RESULT"
+  printf "%-16s: %s\n" "specialisation" "$SPEC_RESULT"
   printf "%-16s: %s\n" "dry rebuild" "$DRY_RESULT"
   printf "%-16s: %s\n" "real rebuild" "$REBUILD_RESULT"
   printf "%-16s: %s\n" "GRUB label" "$GRUB_LABEL"
@@ -44,6 +49,22 @@ ask() {
     y|Y|yes|Yes|YES) return 0 ;;
     *) return 1 ;;
   esac
+}
+
+# Which specialisation was this machine booted into? Prints its name, or
+# nothing for the base config. Compares /run/booted-system against the
+# specialisation toplevels of every system generation still on disk.
+detect_specialisation() {
+  local booted link
+  booted="$(readlink -f /run/booted-system 2>/dev/null)" || return 0
+  [ -n "$booted" ] || return 0
+  for link in /nix/var/nix/profiles/system-*-link/specialisation/*; do
+    [ -e "$link" ] || continue
+    if [ "$(readlink -f "$link")" = "$booted" ]; then
+      basename "$link"
+      return 0
+    fi
+  done
 }
 
 echo ""
@@ -110,6 +131,18 @@ if command -v thorns-aide >/dev/null 2>&1; then
   fi
 fi
 
+# ── Specialisation detection ─────────────────────────────────────────────────
+SPEC="$(detect_specialisation)"
+SPEC_ARGS=()
+if [ -n "$SPEC" ]; then
+  SPEC_ARGS=(--specialisation "$SPEC")
+  SPEC_RESULT="$SPEC (kept)"
+else
+  SPEC_RESULT="none (base DESK)"
+fi
+echo ""
+echo "Booted specialisation: ${SPEC:-none (base DESK)}"
+
 # Candidate GRUB label (written to file only if the switch succeeds)
 N=$(( $(cat "$COUNT_FILE" 2>/dev/null || echo 0) + 1 ))
 
@@ -118,6 +151,11 @@ echo "=============== 2/5 DRY REBUILD ================"
 echo "dry-activate: fully builds the config + prints a change report."
 echo "NOTHING is applied: counter, GRUB and the running system stay untouched."
 echo "Candidate GRUB label: T-${N} (dry and switch are evaluated with the same label)"
+if [ -n "$SPEC" ]; then
+  echo "NOTE: the dry report below is computed for the BASE config; the real"
+  echo "      switch will activate specialisation '${SPEC}' (nixos-rebuild only"
+  echo "      accepts --specialisation for switch/test)."
+fi
 echo ""
 if NIXOS_LABEL_VERSION=":-:-:T-${N}:-:-:" nixos-rebuild dry-activate --flake /etc/nixos#portable --impure "$@"; then
   DRY_RESULT="SUCCESS"
@@ -131,7 +169,7 @@ else
   exit 1
 fi
 
-if ! ask "Proceed with the real rebuild (switch)?"; then
+if ! ask "Proceed with the real rebuild (switch${SPEC:+ → $SPEC})?"; then
   REBUILD_RESULT="skipped (user)"
   summary
   exit 0
@@ -140,7 +178,7 @@ fi
 echo ""
 echo "============ 3/5 REAL REBUILD + SWITCH ============"
 echo ""
-if NIXOS_LABEL_VERSION=":-:-:T-${N}:-:-:" nixos-rebuild switch --flake /etc/nixos#portable --impure "$@"; then
+if NIXOS_LABEL_VERSION=":-:-:T-${N}:-:-:" nixos-rebuild switch --flake /etc/nixos#portable --impure "${SPEC_ARGS[@]}" "$@"; then
   REBUILD_RESULT="SUCCESS"
   echo "$N" > "$COUNT_FILE"
   if command -v thorns-aide >/dev/null 2>&1; then
