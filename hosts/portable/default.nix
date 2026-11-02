@@ -79,8 +79,10 @@
     };
   programs.spine.enable = true;
 
-  security.sudo.enable = true;
-  security.sudo.wheelNeedsPassword = true;
+     # sudo-rs: Rust ile yazilmis, bellek-guvenli sudo (Ubuntu 26.04 LTS varsayilani)
+     security.sudo.enable = false;
+     security.sudo-rs.enable = true;
+     security.sudo-rs.wheelNeedsPassword = true;
 
 	specialisation."PRIME".configuration = { config, lib, ... }: {
 	  boot.loader.grub.configurationName = lib.mkForce ("NIXOS-PRIME-" + (let v = builtins.getEnv "NIXOS_LABEL_VERSION"; in if v == "" then ":-:-:dev:-:-:" else v));
