@@ -71,7 +71,7 @@ fn classify(key: &str, from_store: bool, failed: bool) -> (String, &'static str)
     let (mut title, mut sev) = match key {
         "ssh" => ("/root/.ssh changed".to_string(), if from_store { "warn" } else { "crit" }),
         "boot" => ("Boot partition changed".to_string(), if from_store { "notice" } else { "crit" }),
-        "nocer" => ("NOCER state changed".to_string(), "notice"),
+        "nocer" => ("NOCER state changed".to_string(), if from_store { "notice" } else { "warn" }),
         "autostart" => ("Autostart entry changed".to_string(), "warn"),
         "user-systemd" => ("User systemd unit changed".to_string(), "warn"),
         other => (format!("Audit event: {other}"), "notice"),
@@ -83,6 +83,12 @@ fn classify(key: &str, from_store: bool, failed: bool) -> (String, &'static str)
         }
     }
     (title, sev)
+}
+
+/// Programs from the Nix store that legitimately write /var/lib/nocer.
+fn expected_nocer_writer(exe: &str) -> bool {
+    exe.starts_with("/nix/store/")
+        && matches!(exe.rsplit('/').next(), Some(".nocer-wrapped" | "nocer" | "systemd-tmpfiles"))
 }
 
 pub struct AuditEvent {
@@ -136,7 +142,12 @@ pub fn handle_event(hub: &Hub, ev: &AuditEvent) {
         return;
     }
 
-    let (title, sev) = classify(key, from_store, failed);
+    let (title, mut sev) = classify(key, from_store, failed);
+    if key == "nocer" && expected_nocer_writer(&exe) {
+        // NOCER itself and systemd-tmpfiles touch /var/lib/nocer on every
+        // boot and rebuild (policy merge, permission checks). Logged, not shown.
+        sev = "info";
+    }
     let dk = format!("audit|{key}|{sev}|{}", if key == "boot" { "" } else { target.as_str() });
     hub.emit(sev, &src, &title, &detail, Some((&dk, 600)));
 }
@@ -320,6 +331,21 @@ mod tests {
         assert!(ev[3]["detail"].as_str().unwrap().contains("/root/.ssh/my key"));
         assert_eq!(ev.len(), 4);
         assert_eq!(hub.stats().1, 2);
+    }
+
+    #[test]
+    fn expected_nocer_writers_are_info_others_are_shown() {
+        let p = Paths::temp("nocer");
+        let hub = Hub::new(p.clone());
+        let tmpfiles = "/nix/store/6qqq5prql4952z0wfm5ymjfr7cx4ab7z-systemd-262/bin/systemd-tmpfiles";
+        let nocer = "/nix/store/1qgfllz874ncc2hi2h18pkp3dr0w05zk-nocer-0.1.0/bin/.nocer-wrapped";
+        run(&hub, 1, "nocer", tmpfiles, "\"/var/lib/nocer/index.json\"", "no");
+        run(&hub, 2, "nocer", nocer, "\"/var/lib/nocer/firefox-policies.json\"", "yes");
+        run(&hub, 3, "nocer", STORE, "\"/var/lib/nocer/enabled/x\"", "yes"); // e.g. cp: shown
+        run(&hub, 4, "nocer", "/tmp/evil/nocer", "\"/var/lib/nocer/certs/x\"", "yes"); // not from store
+        let ev = read_events(&p.events).unwrap();
+        let sev: Vec<&str> = ev.iter().map(|e| e["sev"].as_str().unwrap()).collect();
+        assert_eq!(sev, vec!["info", "info", "notice", "warn"]);
     }
 
     #[test]

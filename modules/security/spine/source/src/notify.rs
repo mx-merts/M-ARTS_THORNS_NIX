@@ -16,10 +16,12 @@ use std::time::Duration;
 /// notify-send arguments for an event, or None if it is not shown (info).
 pub fn build_args(rec: &Value) -> Option<Vec<String>> {
     let sev = rec.get("sev")?.as_str()?;
-    let (urgency, icon) = match sev {
-        "notice" => ("low", "dialog-information"),
-        "warn" => ("normal", "dialog-warning"),
-        "crit" => ("critical", "dialog-error"),
+    // expire: "0" = stays on screen until closed (warn and crit are rare and
+    // worth seeing); "-1" = the desktop's default timeout (notice).
+    let (urgency, icon, expire) = match sev {
+        "notice" => ("low", "dialog-information", "-1"),
+        "warn" => ("normal", "dialog-warning", "0"),
+        "crit" => ("critical", "dialog-error", "0"),
         _ => return None,
     };
     let title = rec.get("title").and_then(Value::as_str).unwrap_or("");
@@ -31,6 +33,8 @@ pub fn build_args(rec: &Value) -> Option<Vec<String>> {
         urgency.into(),
         "-i".into(),
         icon.into(),
+        "-t".into(),
+        expire.into(),
         format!("SPINE [{}] {}", sev.to_uppercase(), title),
         html_escape(detail),
     ])
@@ -116,9 +120,12 @@ mod tests {
     fn builds_escaped_arguments_and_skips_info() {
         let a = build_args(&json!({"sev":"crit","title":"T","detail":"a <b> & c"})).unwrap();
         assert_eq!(a[3], "critical");
-        assert_eq!(a[6], "SPINE [CRIT] T");
-        assert_eq!(a[7], "a &lt;b&gt; &amp; c");
-        assert_eq!(build_args(&json!({"sev":"warn","title":"T"})).unwrap()[3], "normal");
+        assert_eq!((a[6].as_str(), a[7].as_str()), ("-t", "0"));
+        assert_eq!(a[8], "SPINE [CRIT] T");
+        assert_eq!(a[9], "a &lt;b&gt; &amp; c");
+        let w = build_args(&json!({"sev":"warn","title":"T"})).unwrap();
+        assert_eq!((w[3].as_str(), w[7].as_str()), ("normal", "0"));
+        assert_eq!(build_args(&json!({"sev":"notice","title":"T"})).unwrap()[7], "-1");
         assert!(build_args(&json!({"sev":"info","title":"x"})).is_none());
         assert!(build_args(&json!({"nope":1})).is_none());
     }
