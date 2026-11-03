@@ -4,6 +4,7 @@
   # Downloads, Desktop, USB). Oyun/Steam klasorleri izlenmez.
   # Haftalik tarama home'u tarar (clamd uzerinden, hizli). Lynis haftalik log.
   # Aylik: Nix store butunluk dogrulamasi.
+  # fangfrisch: resmi ClamAV imzalarina ek, topluluk imza kaynaklari.
 
   environment.systemPackages = with pkgs; [ clamav lynis ];
 
@@ -32,6 +33,15 @@
       OnAccessExcludeRootUID = true;
 
     };
+
+    # fangfrisch: resmi imzalara EK imza kaynaklari indirir (saatlik).
+    # nixpkgs'in kendi ClamAV modulunun parcasi; root yetkisi gerektirmez,
+    # clamav kullanicisi olarak calisir. clamd yeni imzalari SelfCheck ile
+    # (varsayilan 10 dk) kendiliginden yukler, yeniden baslatma gerekmez.
+    # Sanesecurity: varsayilan olarak acik (zararli/phishing/dolandiricilik).
+    # URLhaus (abuse.ch, aktif dagitilan zararlilar): ucretsiz bir Auth-Key
+    # gerektirir; anahtar alininca ayri bir adimda acilacak.
+    fangfrisch.enable = true;
   };
 
   systemd.services.clamav-weekly-scan = {
