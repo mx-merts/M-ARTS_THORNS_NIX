@@ -97,28 +97,39 @@ fn ensure_dirs() -> io::Result<()> {
     Ok(())
 }
 
-/// Firefox policies.json'ı aktif sertifikalara göre yeniden yazar.
+/// Nix'in urettigi temel Firefox politikalari (programs.firefox.policies).
+/// NOCER bunlari bozmadan sadece "Certificates" bolumunu ekler.
+fn firefox_base_policy_file() -> PathBuf {
+    env::var("NOCER_FIREFOX_BASE_POLICY")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("/etc/nocer/firefox-base-policies.json"))
+}
+
+/// Firefox policies.json'ı yeniden yazar: Nix'in temel politikalari +
+/// aktif sertifikalar. Temel dosya yoksa/bozuksa sadece sertifikalar yazilir.
 fn write_firefox_policy(idx: &Index) -> io::Result<()> {
     let install: Vec<String> = idx.certs.iter()
         .filter(|c| c.enabled)
         .map(|c| certs_dir().join(&c.file).to_string_lossy().into_owned())
         .collect();
 
-    let policy = serde_json::json!({
-        "policies": {
-            "Certificates": {
-                "ImportEnterpriseRoots": true,
-                "Install": install
-            }
-        }
+    let mut root: serde_json::Value = fs::read_to_string(firefox_base_policy_file())
+        .ok()
+        .and_then(|raw| serde_json::from_str(&raw).ok())
+        .filter(|v: &serde_json::Value| v.get("policies").map_or(false, |p| p.is_object()))
+        .unwrap_or_else(|| serde_json::json!({ "policies": {} }));
+
+    root["policies"]["Certificates"] = serde_json::json!({
+        "ImportEnterpriseRoots": true,
+        "Install": install
     });
 
-    fs::write(firefox_policy_file(), serde_json::to_string_pretty(&policy)?)?;
+    fs::write(firefox_policy_file(), serde_json::to_string_pretty(&root)?)?;
     Ok(())
 }
 
-/// systemd servisi varsa onu tetikle, yoksa/başarısızsa elle birleştir.
-/// Hiçbir koşulda stdout/stderr'e yazmaz — TUI bozulmasın.
+  /// systemd servisi varsa onu tetikle, yoksa/başarısızsa elle birleştir.
+  /// Hiçbir koşulda stdout/stderr'e yazmaz — TUI bozulmasın.
 fn trigger_rebuild() {
     let systemd_ok = if Path::new("/run/systemd/system").exists() {
         Command::new("systemctl")

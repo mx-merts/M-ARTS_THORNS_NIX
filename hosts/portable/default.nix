@@ -32,6 +32,7 @@
     ../../modules/security/spine
     ../../modules/security/aide
     ../../modules/security/lkrg.nix
+    ../../modules/security/firefox.nix
 
     ../../modules/desktop/kde.nix
     ../../modules/desktop/hyprland.nix

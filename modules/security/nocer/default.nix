@@ -6,6 +6,12 @@ let
 
   nocer = pkgs.callPackage ./package.nix {};
 
+  # Nix'in Firefox politikalari (programs.firefox.policies: telemetri, uBlock,
+  # HTTPS-Only vb.). NOCER bunlari bozmadan sadece "Certificates" ekler.
+  firefoxBasePolicy = (pkgs.formats.json { }).generate "firefox-base-policies.json" {
+    inherit (config.programs.firefox) policies;
+  };
+
   rebuildBundle = pkgs.writeShellApplication {
     name = "nocer-rebuild-bundle";
     runtimeInputs = [ pkgs.coreutils ];
@@ -59,8 +65,9 @@ in
       type = types.bool;
       default = true;
       description = ''
-        /etc/firefox/policies/policies.json'ı writable bir konuma symlink'le.
-        UYARI: programs.firefox.policies kullanıyorsan bunu false yap.
+        /etc/firefox/policies/policies.json'ı NOCER'in urettigi dosyaya bagla.
+        Dosya = programs.firefox.policies (Nix) + aktif sertifikalar (NOCER),
+        yani Nix politikalari kaybolmaz.
       '';
     };
   };
@@ -82,11 +89,31 @@ in
       "f ${cfg.stateDir}/index.json   0644 root root -"
       "f ${cfg.stateDir}/firefox-policies.json 0644 root root -"
       "Z ${cfg.stateDir}              -    root root -"
-    ] ++ lib.optionals cfg.manageFirefoxPolicy [
-      "d /etc/firefox                0755 root root -"
-      "d /etc/firefox/policies       0755 root root -"
-      "L+ /etc/firefox/policies/policies.json - - - - ${cfg.stateDir}/firefox-policies.json"
     ];
+
+    # Firefox politikalari: eskiden tmpfiles "L+" ile /etc dosyasinin USTUNE
+    # yaziliyordu ve programs.firefox'un kendi politikalari (DisableAppUpdate
+    # vb.) sessizce kayboluyordu. Artik:
+    #   /etc/nocer/firefox-base-policies.json  <- Nix politikalari (salt-okunur)
+    #   /etc/firefox/policies/policies.json    -> NOCER'in birlestirdigi dosya
+    environment.etc = lib.mkIf cfg.manageFirefoxPolicy {
+      "nocer/firefox-base-policies.json".source = firefoxBasePolicy;
+      "firefox/policies/policies.json".source = lib.mkForce "${cfg.stateDir}/firefox-policies.json";
+    };
+
+    # Birlesik dosyayi acilista ve Nix politikalari her degistiginde yeniden
+    # uretir (nocer her calismada politikayi yazar; "list" hicbir seyi degistirmez).
+    systemd.services.nocer-firefox-policy = lib.mkIf cfg.manageFirefoxPolicy {
+      description = "Merge Nix Firefox policies with NOCER certificates";
+      wantedBy = [ "multi-user.target" ];
+      after = [ "systemd-tmpfiles-setup.service" ];
+      restartTriggers = [ firefoxBasePolicy ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        ExecStart = "${nocer}/bin/nocer list";
+      };
+    };
 
     systemd.services.nocer-rebuild = {
       description = "Rebuild NOCER CA bundle";
