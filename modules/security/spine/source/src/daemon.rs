@@ -3,7 +3,7 @@
 use crate::audit::AuditTail;
 use crate::event::{self, Hub};
 use crate::paths::Paths;
-use crate::{clam, kernel, state, util, VERSION};
+use crate::{clam, kernel, lkrg, state, util, VERSION};
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -20,6 +20,10 @@ pub fn run() -> i32 {
     {
         let hub = Arc::clone(&hub);
         thread::spawn(move || clam::run(&hub));
+    }
+    {
+        let hub = Arc::clone(&hub);
+        thread::spawn(move || lkrg::run(&hub));
     }
 
     let started = util::now();

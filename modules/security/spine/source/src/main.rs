@@ -5,7 +5,7 @@
 //!
 //! SPINE only observes and reports. It never blocks, kills or deletes anything.
 //!
-//!   spine daemon   root service: audit log, ClamAV journal, kernel state
+//!   spine daemon   root service: audit log, ClamAV journal, LKRG, kernel state
 //!   spine notify   user service: desktop notifications
 //!   spine status   overview (default)
 //!   spine log      recent events
@@ -18,6 +18,7 @@ mod cli;
 mod daemon;
 mod event;
 mod kernel;
+mod lkrg;
 mod notify;
 mod paths;
 mod state;

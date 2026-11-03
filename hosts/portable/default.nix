@@ -31,6 +31,7 @@
     ../../modules/security/nocer
     ../../modules/security/spine
     ../../modules/security/aide
+    ../../modules/security/lkrg.nix
 
     ../../modules/desktop/kde.nix
     ../../modules/desktop/hyprland.nix
