@@ -2,8 +2,8 @@
 {
   # AMAC: Kernel sertlestirmesi. Hicbir uygulamayi kisitlamaz;
   # oyun/Steam/Wine/Flatpak bozulmaz. Sadece bilinen saldiri yuzeylerini kapatir.
-  # NOT: Ag ile ilgili sysctl'ler (rp_filter, redirect vb.) VPN/DNS duzeni
-  # bozulmasin diye bilincli olarak simdilik degistirilmedi -- ag asamasinda ele alinacak.
+  # NOT: Ag sysctl'leri VPN/DNS duzenine dokunmaz (WireGuard redirect kullanmaz;
+  # rp_filter=1 ile ProtonVPN calisiyor, bkz. vpn.nix).
 
   boot.kernel.sysctl = {
     # --- Kernel bilgi sizintisi ---
@@ -24,8 +24,24 @@
     "fs.protected_regular" = 2;             #   tuzaklarina karsi koruma
     "fs.suid_dumpable" = 0;                 # setuid programlar core dump birakmasin
 
-    # --- Mevcut ag ayarlari (DEGISTIRILMEDI) ---
+    # --- Ag: sahte kaynak adresi korumasi (kernel, strict) ---
+    # vpn.nix'teki checkReversePath=false sadece firewall'daki EK kontrolu kapatir;
+    # bu kernel korumasi acik ve ProtonVPN ile sorunsuz calisiyor.
     "net.ipv4.conf.all.rp_filter" = 1;
+
+    # --- Ag: ICMP redirect reddi ---
+    # Ayni yerel agdaki biri (okul, kafe) sahte "yonlendirme" paketleriyle
+    # trafigini kendi uzerinden gecirebiliyordu (MITM). Bir bilgisayarin
+    # redirect'e ihtiyaci yok; hiz/baglanti etkisi sifir.
+    "net.ipv4.conf.all.accept_redirects" = 0;
+    "net.ipv4.conf.default.accept_redirects" = 0;
+    "net.ipv4.conf.all.secure_redirects" = 0;
+    "net.ipv4.conf.default.secure_redirects" = 0;
+    "net.ipv6.conf.all.accept_redirects" = 0;
+    "net.ipv6.conf.default.accept_redirects" = 0;
+    "net.ipv4.conf.all.send_redirects" = 0;    # biz router degiliz
+    "net.ipv4.conf.default.send_redirects" = 0;
+
     "net.ipv4.icmp_echo_ignore_broadcasts" = 1;
     "net.ipv4.tcp_syncookies" = 1;
   };

@@ -13,8 +13,11 @@
     enable = true;
     settings = {
       listen_addresses = [ "127.0.0.1:53" ];
-      # Cloudflare birincil (DoH), Quad9 yedek — tek nokta bağımlılığı yok
-      server_names = [ "cloudflare" "quad9-dnscrypt-ip4-filter-pri" ];
+      # Cloudflare (DoH) + Quad9 (DNSCrypt) — tek nokta bağımlılığı yok.
+      # İKİSİ DE zararlı alan adı filtreli: cloudflare-security = 1.1.1.2
+      # (aynı Cloudflare ağı, aynı hız). Eskiden "cloudflare" filtresizdi ve
+      # p2 dengeleme yüzünden sorguların sadece bir kısmı filtreleniyordu.
+      server_names = [ "cloudflare-security" "quad9-dnscrypt-ip4-filter-pri" ];
 
       # Yerel cache — tekrar sorgular RAM'den cevaplanır, asıl hız kazancı burada
       cache = true;
@@ -30,8 +33,15 @@
   services.resolved = {
     enable = true;
     settings.Resolve = {
-      DNSSEC = "false"; # dnscrypt-proxy zaten kendi doğrulamasını yapıyor
+      # DNSSEC doğrulamasını Cloudflare/Quad9 sunucu tarafında yapıyor
+      # (dnscrypt-proxy kendisi doğrulama YAPMAZ; yerelde tekrar yapmak gereksiz).
+      DNSSEC = "false";
       Domains = [ "~." ];
+      # LLMNR / mDNS kapalı: bilgisayar yerel ağda "THORNS" adıyla soru-cevap
+      # yapmasın (LLMNR zehirleme saldırılarına kapı). Avahi kullanılmıyor,
+      # hiçbir şey bozulmaz; tek etiketli adlarda bekleme de ortadan kalkar.
+      LLMNR = "false";
+      MulticastDNS = "false";
     };
   };
 

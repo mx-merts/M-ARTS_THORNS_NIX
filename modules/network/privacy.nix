@@ -13,4 +13,15 @@
   # IPv6 privacy extensions -- gecici (rastgele) adresler tercih edilir,
   # kalici arayuz kimligine dayali adresler disari sizmaz
   networking.tempAddresses = "default";
+
+  networking.networkmanager.connectionConfig = {
+    # DHCP isteklerinde bilgisayar adini ("THORNS") gonderme: okul/kafe
+    # modemi ve ag yoneticisi seni adinla goremesin. MAC rastgelelestirme
+    # ile birlikte anlamli olur.
+    "ipv4.dhcp-send-hostname" = false;
+    "ipv6.dhcp-send-hostname" = false;
+    # LLMNR / mDNS her baglantida kapali (dns.nix'teki resolved ayariyla ayni)
+    "connection.llmnr" = 0;
+    "connection.mdns" = 0;
+  };
 }
