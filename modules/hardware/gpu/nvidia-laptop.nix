@@ -5,6 +5,9 @@
 
   services.xserver.videoDrivers = [ "modesetting" "nvidia" ];
 
+  # Vulkan (vkd3d/DXVK) needs /dev/nvidia-uvm. Flatpak games can't trigger nvidia-modprobe, so load it at boot.
+  boot.kernelModules = [ "nvidia_uvm" ];
+
   hardware.nvidia = {
     open = true;  # Ada Lovelace (RTX 4050) Turing+ nesli, açık modül önerilir
     modesetting.enable = true;
