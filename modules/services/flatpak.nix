@@ -16,6 +16,7 @@ let
     "${gamesDir}:create"      # sadece kendi oyun klasoru (yoksa olusturulur)
     "/run/media"              # USB / harici diskler
     "/media"
+    "/run/nocer-ca-bundle.crt:ro"
   ] ++ extra;
 in
 {
