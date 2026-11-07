@@ -43,7 +43,19 @@ in
   # log moduna doner). Sorun yoksa asagidaki *_enforce=0 degerleri kaldirilir.
 
   boot.extraModulePackages = [ lkrg ];
-  boot.kernelModules = [ "lkrg" ];
+  # LKRG systemd-modules-load ile ayni anda yuklenince, o an yuklenen diger
+  # moduller (nvidia_uvm, kvm_intel...) "Interrupted system call" ile dusuyordu.
+  # Bu yuzden diger moduller bittikten SONRA yukleniyor (upstream lkrg.service gibi).
+  systemd.services.lkrg-load = {
+    description = "Load LKRG after other kernel modules";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "systemd-modules-load.service" "systemd-udev-trigger.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.kmod}/bin/modprobe lkrg";
+    };
+  };
   boot.extraModprobeConfig = ''
     options lkrg kint_enforce=0 pint_enforce=0 pcfi_enforce=0 smep_enforce=0 smap_enforce=0 umh_validate=0
   '';
