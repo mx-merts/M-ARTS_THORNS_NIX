@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 # /etc/nixos/rebuild.sh — Smart rebuild module
-# Flow: git add -A -> status + confirm -> [lock] -> dry rebuild -> confirm
-#       -> pick switch target -> rebuild -> confirm -> push -> summary
+# Flow: git add -A -> status + confirm -> [lock] -> update? -> dry rebuild
+#       -> confirm -> pick switch target -> rebuild -> confirm -> push -> summary
 # Rules:
+#   - Update (optional, Enter = skip): "nix flake update" (all inputs) +
+#     "flatpak update". flake.lock is backed up first and RESTORED if the
+#     update is not installed (dry fails, rebuild fails, user aborts, Ctrl+C),
+#     so a broken update never stays behind in the repo or reaches GitHub.
 #   - New files are staged automatically (avoids the flake "does not exist" trap)
 #   - Full output of every stage is shown in the terminal
 #   - If dry fails: no switch, no push
@@ -33,8 +37,31 @@ AIDE_RESULT="not run"
 LOCK_RESULT="not acquired"
 SPEC_RESULT="-"
 TARGET_RESULT="-"
+UPDATE_RESULT="not run"
+
+# Update bookkeeping: LOCK_BACKUP holds the pre-update flake.lock while an
+# update is pending; UPDATE_KEPT=1 once a generation built from it is in GRUB.
+LOCK_BACKUP=""
+UPDATE_KEPT=0
+
+# Put the pre-update flake.lock back unless the update made it into GRUB.
+# Called from summary(), which every exit path runs, so no path can leave a
+# half-applied update behind.
+revert_update() {
+  [ -n "$LOCK_BACKUP" ] || return 0
+  if [ "$UPDATE_KEPT" -eq 0 ]; then
+    cp -f "$LOCK_BACKUP" /etc/nixos/flake.lock
+    git -C /etc/nixos add flake.lock
+    UPDATE_RESULT="${UPDATE_RESULT} -> flake.lock REVERTED (not installed)"
+    echo ""
+    echo ">>> Update was not installed: flake.lock restored to the previous version."
+  fi
+  rm -f "$LOCK_BACKUP"
+  LOCK_BACKUP=""
+}
 
 summary() {
+  revert_update
   echo ""
   echo "================= REBUILD SUMMARY ================="
   printf "%-16s: %s\n" "git add -A" "done"
@@ -42,6 +69,7 @@ summary() {
   printf "%-16s: %s\n" "rebuild lock" "$LOCK_RESULT"
   printf "%-16s: %s\n" "booted" "$SPEC_RESULT"
   printf "%-16s: %s\n" "switch target" "$TARGET_RESULT"
+  printf "%-16s: %s\n" "update" "$UPDATE_RESULT"
   printf "%-16s: %s\n" "dry rebuild" "$DRY_RESULT"
   printf "%-16s: %s\n" "real rebuild" "$REBUILD_RESULT"
   printf "%-16s: %s\n" "GRUB label" "$GRUB_LABEL"
@@ -59,6 +87,9 @@ ask() {
     *) return 1 ;;
   esac
 }
+
+# Ctrl+C / kill: still print the summary (which also reverts a pending update).
+trap 'echo ""; echo ">>> Interrupted."; summary; exit 130' INT TERM
 
 # Which specialisation was this machine booted into? Prints its name, or
 # nothing for the base config. Compares /run/booted-system against the
@@ -169,7 +200,7 @@ do_rebuild() {
 }
 
 echo ""
-echo "=============== 1/5 GIT PREP ==============="
+echo "=============== 1/6 GIT PREP ==============="
 git -C /etc/nixos add -A
 echo "--- git status ---"
 git -C /etc/nixos status
@@ -238,11 +269,59 @@ SPEC_RESULT="${SPEC:-DESK (base)}"
 echo ""
 echo "Booted: ${SPEC:-DESK (base)}"
 
+# ── Optional update ──────────────────────────────────────────────────────────
+# Runs inside the rebuild lock (flake.lock is shared with thorns-upgrade).
+# Enter = skip: the rebuild uses exactly the versions already in flake.lock.
+echo ""
+echo "=============== 2/6 UPDATE (optional) ==============="
+echo "y     : update ALL flake inputs (nixpkgs, nix-flatpak, serpantinum,"
+echo "        excalibur-wmi...) + Flatpak apps, then build with the new versions."
+echo "Enter : skip, build with the current versions (nothing is downloaded)."
+if ask "Update packages before building?"; then
+  LOCK_BACKUP="$(mktemp /run/thorns-flake.lock.XXXXXX)"
+  cp -f /etc/nixos/flake.lock "$LOCK_BACKUP"
+  echo ""
+  echo "--- nix flake update ---"
+  if nix flake update --flake /etc/nixos; then
+    git -C /etc/nixos add flake.lock
+    if cmp -s "$LOCK_BACKUP" /etc/nixos/flake.lock; then
+      UPDATE_RESULT="flake: already up to date"
+      rm -f "$LOCK_BACKUP"
+      LOCK_BACKUP=""
+    else
+      UPDATE_RESULT="flake: updated"
+    fi
+  else
+    # No internet / GitHub rate limit etc.: put the old lock back right away
+    # and carry on with the current versions.
+    cp -f "$LOCK_BACKUP" /etc/nixos/flake.lock
+    rm -f "$LOCK_BACKUP"
+    LOCK_BACKUP=""
+    UPDATE_RESULT="flake: FAILED (kept current versions)"
+    echo ">>> nix flake update FAILED. Continuing with the current versions."
+  fi
+
+  # Flatpak apps are not part of the Nix generation, so a failed rebuild
+  # cannot roll them back; Flathub updates them independently anyway.
+  if command -v flatpak >/dev/null 2>&1; then
+    echo ""
+    echo "--- flatpak update ---"
+    if flatpak update -y --noninteractive; then
+      UPDATE_RESULT="${UPDATE_RESULT}, flatpak: updated"
+    else
+      UPDATE_RESULT="${UPDATE_RESULT}, flatpak: FAILED"
+      echo ">>> flatpak update FAILED (the rebuild continues)."
+    fi
+  fi
+else
+  UPDATE_RESULT="skipped (user)"
+fi
+
 # Candidate GRUB label (written to file only if the rebuild succeeds)
 N=$(( $(cat "$COUNT_FILE" 2>/dev/null || echo 0) + 1 ))
 
 echo ""
-echo "=============== 2/5 DRY REBUILD ================"
+echo "=============== 3/6 DRY REBUILD ================"
 echo "dry-activate: fully builds the config + prints a change report."
 echo "NOTHING is applied: counter, GRUB and the running system stay untouched."
 echo "Candidate GRUB label: T-${N} (dry and real rebuild use the same label)"
@@ -281,7 +360,7 @@ case "$TARGET" in
 esac
 
 echo ""
-echo "============ 3/5 REAL REBUILD + SWITCH ============"
+echo "============ 4/6 REAL REBUILD + SWITCH ============"
 echo ""
 do_rebuild "$@"
 RC=$?
@@ -299,6 +378,8 @@ fi
 # RC 0 or 2: a new generation with label T-N is in GRUB -> consume the counter.
 echo "$N" > "$COUNT_FILE"
 GRUB_LABEL="T-${N}"
+# The updated flake.lock is now what GRUB boots: keep it (it gets pushed).
+UPDATE_KEPT=1
 if command -v thorns-aide >/dev/null 2>&1; then
   if thorns-aide post-rebuild; then
     AIDE_RESULT="pre-check ${AIDE_CHECK}, baseline refreshed"
@@ -331,7 +412,7 @@ if ! ask "Push to GitHub?"; then
 fi
 
 echo ""
-echo "=============== 4/5 GIT PUSH ================"
+echo "=============== 5/6 GIT PUSH ================"
 read -r -p "Commit message (empty = automatic date-time): " COMMIT_MSG
 echo ""
 if [ -n "$COMMIT_MSG" ]; then
@@ -349,5 +430,5 @@ else
 fi
 
 echo ""
-echo "================= 5/5 DONE ================="
+echo "================= 6/6 DONE ================="
 summary
