@@ -11,6 +11,7 @@
 
     ../../modules/network/dns.nix
     ../../modules/network/vpn.nix
+    ../../modules/network/warp.nix
     ../../modules/network/tuning.nix
     ../../modules/network/privacy.nix
 
