@@ -10,7 +10,7 @@ Flake tabanlı, modüler ve deklaratif bir NixOS yapılandırması. **Taşınabi
 | Terminal aracı (CLI) | `modules/programs/cli-tools.nix` |
 | Kabuk/terminal ayarları | `modules/programs/shell.nix`, `modules/desktop/terminal.nix` (kitty, starship) |
 | Neovim (kurulum ve sistem geneli ayarlar) | `modules/programs/neovim.nix` |
-| Neovim kişisel ayarları (eklentiler, kısayollar, tema) | `modules/programs/nvim/` (`~/.config/nvim` buraya bağlanır, `sudo` gerekmez) |
+| Neovim kişisel ayarları (LazyVim) | `~/.config/nvim` (elle yönetilir; `push.sh` `dotfiles/nvim` altına yedekler) |
 | `.jar` dosyası çalıştırma | `modules/programs/jrun.nix` |
 | Yerel (native) Linux uygulaması çalıştırma | `modules/programs/lrun.nix` |
 | Uygulama (oyun, geliştirme, ofis) | `modules/apps/` altında ilgili dosya |
@@ -52,7 +52,7 @@ Flake tabanlı, modüler ve deklaratif bir NixOS yapılandırması. **Taşınabi
 | `modules/security/` | Güvenlik katmanları (aşağıdaki "Güvenlik" bölümüne bakın) |
 | `modules/desktop/` | Masaüstü (KDE, Hyprland + Serpantinum), SDDM teması, terminal |
 | `modules/services/` | Arka plan servisleri (yazıcı, Flatpak) |
-| `modules/programs/` | Amaca göre ayrılmış kullanıcı paketleri (`base`, `shell`, `cli-tools`, `neovim`, `nvim-config`, `jrun`, `lrun`, `cscan`) ve Neovim ayarları (`nvim/`) |
+| `modules/programs/` | Amaca göre ayrılmış kullanıcı paketleri (`base`, `shell`, `cli-tools`, `neovim`, `jrun`, `lrun`, `cscan`) |
 | `modules/apps/` | Geliştirme, oyun, ofis, tasarım ve günlük kullanım uygulamaları |
 | `modules/users/` | Kullanıcı tanımları |
 | `assets/sddm/pixel-night-city/` | SDDM giriş ekranı teması (`pixel-night-city`) dosyaları |
@@ -79,7 +79,6 @@ nixpkgs'ta bulunmayan, bu depo için özel olarak geliştirilmiş modüller:
 | AIDE | `/boot` ve kalıcılık noktalarındaki değişiklikleri yakalar | `aide/` |
 | auditd | Kritik dosyalara ve modül yüklemelerine kimin dokunduğunu kaydeder | `auditing.nix` |
 | ClamAV | Downloads, Desktop ve USB'yi anlık tarar. Haftalık `/home` taraması yapar. fangfrisch ile Sanesecurity imzalarını da ekler | `scanning.nix` |
-| AppArmor | Complain modunda: sadece log yazar, hiçbir şeyi engellemez | `apparmor.nix` |
 | Oyun sandbox'ı | Lutris ve Heroic Flatpak'te ev dizinine erişemez; sadece oyun klasörlerini görür (`~/OYUNLAR`, `~/GAMES`). Bir oyun ya da hileyle gelen token çalıcı Discord, Firefox ve `~/.ssh` dosyalarını göremez | `flatpak.nix` |
 | Firefox | Telemetri kapalı, sadece HTTPS, takip koruması, uBlock Origin, Safe Browsing kilitli, punycode adresler açıkça gösterilir, PDF içindeki JavaScript kapalı | `firefox.nix` |
 | Ağ | Şifreli ve zararlı alan adı filtreli DNS (Cloudflare Security + Quad9). LLMNR, mDNS ve DHCP'de hostname gönderimi kapalı. Ping'e cevap verilmez. MAC adresi ağa göre farklı | `network/`, `firewall.nix` |
@@ -146,7 +145,7 @@ sudo nix eval --impure --raw /etc/nixos#nixosConfigurations.portable.pkgs.proton
 
 > **Not:** Bu depo GitHub'a, sadece bu repoya erişimi olan bir **deploy key** ile (`/root/.ssh/`) bağlanır. Bu yüzden git komutları `sudo` ile çalıştırılmalıdır. Anahtarın sadece yorumunu değiştirmek için `ssh-keygen -c -C "yeni yorum" -f <dosya>` kullanın; anahtarı yeniden üretirseniz yeni anahtarı GitHub'a da eklemeniz gerekir.
 
-> **Not:** Sadece Neovim ayarlarını (`modules/programs/nvim/`) değiştirdiysen rebuild gerekmez, `sudo /etc/nixos/push.sh` yeterli. Rebuild yalnızca sistem paketleri (`neovim.nix`) için gerekir.
+> **Not:** Neovim ayarları (`~/.config/nvim`, LazyVim) için rebuild gerekmez; `sudo /etc/nixos/push.sh` onları `dotfiles/nvim` altına yedekler. Rebuild yalnızca sistem paketleri (`neovim.nix`) için gerekir.
 
 ## Rebuild akışı
 
@@ -192,10 +191,10 @@ sudo nix eval --impure --raw /etc/nixos#nixosConfigurations.portable.pkgs.proton
 
 ## Başka bir diske veya makineye taşıma
 
-`hardware-configuration.nix` içindeki dosya sistemi UUID'leri (`fileSystems."/"` ve `fileSystems."/boot"`) bu SSD'ye özeldir. Sistemi başka bir diske taşırken şunları yapın:
+`hardware-configuration.nix` diskleri UUID ile değil **etiketle** bulur (`THORNS-ROOT`, `THORNS-BOOT`). Yeni diskte bölümlere aynı etiketleri verirseniz dosyayı değiştirmeniz gerekmez. Farklı etiket kullanacaksanız:
 
 1. `nixos-generate-config --root /mnt` komutuyla yeni bir `hardware-configuration.nix` üretin.
-2. Eski dosyayı bununla değiştirin (UUID'ler otomatik olarak doğru gelir).
+2. Eski dosyayı bununla değiştirin.
 3. `rebuild.sh` ile yeni yapılandırmayı uygulayın.
 
 `modules/` klasörüne hiç dokunmanız gerekmez; taşıma yalnızca `hosts/` düzeyinde yapılır. WARP kaydı ve modu yeni kurulumda kendiliğinden yapılır.

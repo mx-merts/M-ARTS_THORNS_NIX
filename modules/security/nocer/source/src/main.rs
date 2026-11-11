@@ -1,5 +1,5 @@
 // NOCER — NixOS runtime certificate manager
-// TUI + CLI. Runtime sertifika aç/kapa, rebuild yok, sudo yok.
+// TUI + CLI. Runtime sertifika aç/kapa, rebuild yok. Değişiklik için sudo gerekir.
 
 use std::env;
 use std::fs;

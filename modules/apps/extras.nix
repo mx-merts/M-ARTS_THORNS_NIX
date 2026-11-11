@@ -9,7 +9,6 @@
     spotify
     obs-studio
     obsidian
-    kitty
     qbittorrent
     yacreader
   ];

@@ -34,7 +34,7 @@ let
     "${home}/\\.config/autostart Norm"
     "${home}/\\.config/systemd/user Norm"
     "${home}/\\.config/environment\\.d Norm"
-    "${home}/\\.config/plasma-workshop/(env|shutdown) Norm"
+    "${home}/\\.config/plasma-workspace/(env|shutdown) Norm"
     "${home}/\\.(zshrc|zshenv|zprofile|bashrc|bash_profile|profile)$ Norm"
     "${home}/\\.config/fish/config\\.fish$ Norm"
   ];

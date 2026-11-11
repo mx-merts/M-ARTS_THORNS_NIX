@@ -82,8 +82,10 @@
   security.sudo-rs.execWheelOnly = true;
 
   # TTY girisinde yanlis sifre sonrasi 3 sn bekleme (hesap kilidi DEGIL)
-  security.pam.services.login.failDelay.delay = 3000000;
-
+     security.pam.services.login.failDelay = {
+       enable = true;
+       delay = 3000000;
+     };
   # fwupd KAPALI: Plasma varsayilan olarak aciyor. Sistem okul/baskasinin
   # bilgisayarina takildiginda KDE Discover O MAKINENIN firmware'ini
   # guncellemeyi onerebilir -- baskasinin donanimina firmware basilmasin.

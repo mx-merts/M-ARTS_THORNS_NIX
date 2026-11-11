@@ -1,9 +1,9 @@
 { lib
 , rustPlatform
-, pkg-config
+, makeWrapper
 , openssl
 , fzf
-, makeWrapper
+, findutils
 }:
 
 rustPlatform.buildRustPackage {
@@ -14,12 +14,13 @@ rustPlatform.buildRustPackage {
 
   cargoLock.lockFile = ./source/Cargo.lock;
 
-  nativeBuildInputs = [ pkg-config makeWrapper ];
-  buildInputs = [ openssl ];
+  nativeBuildInputs = [ makeWrapper ];
 
+  # Calisma aninda cagrilan komutlar: fzf + find (dosya secici),
+  # openssl (DER -> PEM cevirme). Kutuphane olarak openssl'e baglanmaz.
   postInstall = ''
     wrapProgram $out/bin/nocer \
-      --prefix PATH : ${lib.makeBinPath [ fzf ]}
+      --prefix PATH : ${lib.makeBinPath [ fzf findutils openssl ]}
   '';
 
   meta = with lib; {

@@ -12,8 +12,7 @@ NixOS'ta sistem CA deposu **read-only**'dir (`/etc/ssl/certs/ca-certificates.crt
 - Sertifikayı **runtime'da aktifleştirir** (rebuild yok, boot yok, ~100ms)
 - Aktifken **Firefox, VS Code, curl, git, python, node ve diğer tüm HTTPS araçları** sertifikayı otomatik kullanır
 - İşin bitince tek tuşla deaktive edersin, kendi internetine dönersin
-- Her şey `wheel` grubu izniyle çalışır, `sudo` gerekmez
-
+- Listeleme (`nocer list`) herkese açık; ekleme/açma/kapama/silme `sudo nocer` ister (state yalnızca root'a yazılabilir)
 ## Kurulum
 
 ```nix

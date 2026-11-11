@@ -8,7 +8,7 @@
 
 {
   networking.networkmanager.wifi.macAddress = "stable-ssid";
-  networking.networkmanager.ethernet.macAddress = "stable-ssid";
+  networking.networkmanager.ethernet.macAddress = "stable";
 
   # IPv6 privacy extensions -- gecici (rastgele) adresler tercih edilir,
   # kalici arayuz kimligine dayali adresler disari sizmaz

@@ -4,6 +4,5 @@
   # Kategoriye özel paketler için: development.nix, gaming.nix, media.nix (ileride)
   programs.firefox.enable = true;
   environment.systemPackages = with pkgs; [
-    git
   ];
 }

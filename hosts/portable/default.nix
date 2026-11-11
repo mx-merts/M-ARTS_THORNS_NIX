@@ -1,4 +1,11 @@
 { config, lib, pkgs, ... }:
+let
+  # GRUB etiketi: rebuild.sh "T-<sayi>", thorns-upgrade "AUTO-<tarih>" verir
+  # (NIXOS_LABEL_VERSION + --impure). Elle rebuild edilirse "dev" gorunur.
+  labelVersion =
+    let v = builtins.getEnv "NIXOS_LABEL_VERSION";
+    in if v == "" then ":-:-:dev:-:-:" else v;
+in
 {
   imports = [
     ./hardware-configuration.nix
@@ -25,7 +32,6 @@
 
     ../../modules/security/firewall.nix
     ../../modules/security/hardening.nix
-    ../../modules/security/apparmor.nix
     ../../modules/security/sandboxing.nix
     ../../modules/security/scanning.nix
     ../../modules/security/auditing.nix
@@ -37,26 +43,27 @@
 
     ../../modules/desktop/kde.nix
     ../../modules/desktop/hyprland.nix
-       ../../modules/desktop/serpantinum.nix
+    ../../modules/desktop/serpantinum.nix
     ../../modules/desktop/sddm-theme.nix
-    ../../modules/services/printing.nix
     ../../modules/desktop/terminal.nix
+
+    ../../modules/services/printing.nix
+    ../../modules/services/flatpak.nix
 
     ../../modules/programs/base.nix
     ../../modules/programs/shell.nix
     ../../modules/programs/cli-tools.nix
     ../../modules/programs/neovim.nix
-    ../../modules/programs/neovim.nix
-    ../../modules/programs/nvim-config.nix
     ../../modules/programs/jrun.nix
     ../../modules/programs/lrun.nix
-        ../../modules/programs/cscan.nix
+    ../../modules/programs/cscan.nix
+
     ../../modules/apps/development.nix
     ../../modules/apps/gaming.nix
     ../../modules/apps/office.nix
     ../../modules/apps/design.nix
     ../../modules/apps/extras.nix
-    ../../modules/services/flatpak.nix
+
     ../../modules/users/m-arts.nix
   ];
 
@@ -64,36 +71,32 @@
 
   system.stateVersion = "26.05";
 
-  system.nixos.tags = [ "DESK" ];
-
-    system.nixos.label = "NIXOS-DESK-" + (let v = builtins.getEnv "NIXOS_LABEL_VERSION"; in if v == "" then ":-:-:dev:-:-:" else v);
-
-  console.keyMap = "trq";
+  system.nixos.label = "NIXOS-DESK-" + labelVersion;
 
   environment.sessionVariables.NIXOS_OZONE_WL = "1";
 
   programs.nocer.enable = true;
-  
-    hardware.excaliburRgb = {
-      enable = true;
-      mode = "rainbow";
-      color = "FFFFFF";
-      brightness = 2;
-    };
   programs.spine.enable = true;
 
-     # sudo-rs: Rust ile yazilmis, bellek-guvenli sudo (Ubuntu 26.04 LTS varsayilani)
-     security.sudo.enable = false;
-     security.sudo-rs.enable = true;
-     security.sudo-rs.wheelNeedsPassword = true;
+  hardware.excaliburRgb = {
+    enable = true;
+    mode = "rainbow";
+    color = "FFFFFF";
+    brightness = 2;
+  };
 
-	specialisation."PRIME".configuration = { config, lib, ... }: {
-	  boot.loader.grub.configurationName = lib.mkForce ("NIXOS-PRIME-" + (let v = builtins.getEnv "NIXOS_LABEL_VERSION"; in if v == "" then ":-:-:dev:-:-:" else v));
-	  imports = [ ../../modules/hardware/gpu/nvidia-laptop.nix ];
-	};
+  # sudo-rs: Rust ile yazilmis, bellek-guvenli sudo (Ubuntu 26.04 LTS varsayilani)
+  security.sudo.enable = false;
+  security.sudo-rs.enable = true;
+  security.sudo-rs.wheelNeedsPassword = true;
+
+  specialisation."PRIME".configuration = { config, lib, ... }: {
+    boot.loader.grub.configurationName = lib.mkForce ("NIXOS-PRIME-" + labelVersion);
+    imports = [ ../../modules/hardware/gpu/nvidia-laptop.nix ];
+  };
 
   specialisation."NVIDIA-DESKTOP".configuration = { config, lib, ... }: {
-    boot.loader.grub.configurationName = lib.mkForce ("NIXOS-NVIDIA-DESKTOP-" + (let v = builtins.getEnv "NIXOS_LABEL_VERSION"; in if v == "" then ":-:-:dev:-:-:" else v));
+    boot.loader.grub.configurationName = lib.mkForce ("NIXOS-NVIDIA-DESKTOP-" + labelVersion);
     imports = [ ../../modules/hardware/gpu/nvidia-desktop.nix ];
   };
 }

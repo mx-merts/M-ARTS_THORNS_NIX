@@ -1,8 +1,0 @@
-{
-  "name": "kisisel-snippets",
-  "contributes": {
-    "snippets": [
-      { "language": "html", "path": "./html.json" }
-    ]
-  }
-}

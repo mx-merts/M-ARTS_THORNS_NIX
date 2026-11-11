@@ -38,8 +38,31 @@
       AIDE_CLEAN=0
       if [ -x "$AIDE" ] && "$AIDE" pre-rebuild --alert; then AIDE_CLEAN=1; fi
 
-      nix flake update nixpkgs
-      nixos-rebuild boot --flake /etc/nixos#portable
+      # flake.lock yedegi: guncelleme ya da build basarisiz olursa eski kilit
+      # geri konur (rebuild.sh'teki revert_update ile ayni mantik). Boylece
+      # derlenmeyen bir nixpkgs surumu repoda kalmaz, sonraki elle rebuild'i
+      # de bozmaz.
+      LOCK_BACKUP="$(mktemp /run/thorns-flake.lock.XXXXXX)"
+      cp -f flake.lock "$LOCK_BACKUP"
+      restore_lock() {
+        cp -f "$LOCK_BACKUP" /etc/nixos/flake.lock
+        rm -f "$LOCK_BACKUP"
+        echo "thorns-upgrade: basarisiz, flake.lock eski haline donduruldu."
+      }
+
+      if ! nix flake update nixpkgs; then
+        restore_lock
+        exit 1
+      fi
+
+      # GRUB etiketi: "dev" yerine AUTO-<tarih>. Etiket ortam degiskeninden
+      # okundugu icin --impure gerekir (rebuild.sh ile ayni).
+      LABEL=":-:-:AUTO-$(date +%Y%m%d):-:-:"
+      if ! NIXOS_LABEL_VERSION="$LABEL" nixos-rebuild boot --flake /etc/nixos#portable --impure; then
+        restore_lock
+        exit 1
+      fi
+      rm -f "$LOCK_BACKUP"
 
       if [ "$AIDE_CLEAN" = 1 ]; then "$AIDE" post-rebuild; fi
     '';

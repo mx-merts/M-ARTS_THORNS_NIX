@@ -1,8 +1,7 @@
-# AMAC: Zsh + Oh My Zsh (populer, plugin/tema ekosistemi genis, baskalarindan
-# kopyalamak kolay) + fastfetch (her yeni terminalde otomatik sistem bilgisi,
-# ozel ASCII logo + sade/duzenli bilgi formati). Logo ve config /etc altina
-# deklaratif olarak gomulu -- elle duzenlenen /etc dosyalarina bagimli degil,
-# git'te kayitli, her rebuild'de garantili ayni.
+# AMAC: Zsh (otomatik oneri, sozdizimi renklendirme, fzf-tab, atuin gecmisi)
+# + fastfetch (her yeni terminalde sistem bilgisi, ozel ASCII logo).
+# Prompt starship ile gelir (terminal.nix). Logo ve config /etc altina
+# deklaratif olarak gomulu, git kaydinda, her rebuild sonrasi ayni.
 
 { config, lib, pkgs, ... }:
 
