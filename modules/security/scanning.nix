@@ -44,6 +44,18 @@
     fangfrisch.enable = true;
   };
 
+  
+    # Yanlis alarm listesi (.ign2): buradaki imza ADLARI tum taramalarda yok sayilir.
+    # Sadece dogrulanmis yanlis alarmlar eklenir; her satira neden + tarih yazilir.
+    #   Porcupine.Malware.58887 (Sanesecurity, UNOFFICIAL): Valve'in Proton
+    #     Experimental'indaki wine-mono .NET araclarini (sgen.exe, wsdl.exe) ve
+    #     GOG'un Quake II Enhanced exe'sini isaretliyor. 2026-11-09.
+    # clamd yeni listeyi SelfCheck ile (10 dk) kendiliginden yukler.
+    systemd.tmpfiles.settings."10-clamav-ignore"."/var/lib/clamav/thorns.ign2"."L+".argument =
+      toString (pkgs.writeText "thorns.ign2" ''
+        Porcupine.Malware.58887
+      '');
+
   systemd.services.clamav-weekly-scan = {
     description = "Haftalik ClamAV home taramasi (sadece log)";
     after = [ "clamav-daemon.service" ];
