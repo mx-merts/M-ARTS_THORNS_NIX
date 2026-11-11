@@ -16,6 +16,7 @@
       "HIST_IGNORE_DUPS"
       "HIST_IGNORE_SPACE"
       "SHARE_HISTORY"
+      "HIST_FCNTL_LOCK"
       "AUTO_CD"
     ];
 
@@ -33,7 +34,6 @@
       zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
       zstyle ':completion:*' menu select
 
-      eval "$(${pkgs.atuin}/bin/atuin init zsh --disable-up-arrow)"
       source ${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.plugin.zsh
       eval "$(${pkgs.pay-respects}/bin/pay-respects zsh --alias)"
 

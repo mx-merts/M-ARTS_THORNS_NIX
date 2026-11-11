@@ -4,11 +4,13 @@
 , openssl
 , fzf
 , findutils
+, nssTools
+, util-linux
 }:
 
 rustPlatform.buildRustPackage {
   pname = "nocer";
-  version = "0.1.0";
+  version = "0.0.2";
 
   src = ./source;
 
@@ -16,15 +18,19 @@ rustPlatform.buildRustPackage {
 
   nativeBuildInputs = [ makeWrapper ];
 
-  # Calisma aninda cagrilan komutlar: fzf + find (dosya secici),
-  # openssl (DER -> PEM cevirme). Kutuphane olarak openssl'e baglanmaz.
+  # Calisma aninda cagrilan komutlar:
+  #   fzf + find   dosya secici
+  #   openssl      DER -> PEM cevirme, parmak izi
+  #   certutil     Firefox profilleri ve ~/.pki/nssdb (NSS depolari)
+  #   setpriv      certutil'i sudo altinda kullanicinin kimligiyle calistirma
+  # Kutuphane olarak openssl'e baglanmaz.
   postInstall = ''
     wrapProgram $out/bin/nocer \
-      --prefix PATH : ${lib.makeBinPath [ fzf findutils openssl ]}
+      --prefix PATH : ${lib.makeBinPath [ fzf findutils openssl nssTools util-linux ]}
   '';
 
   meta = with lib; {
-    description = "NixOS runtime certificate manager";
+    description = "NOCER-0.0.2: NixOS runtime certificate manager";
     homepage = "https://github.com/mx-merts/M-ARTS_THORNS_NIX";
     license = licenses.mit;
     mainProgram = "nocer";

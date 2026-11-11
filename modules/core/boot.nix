@@ -22,4 +22,5 @@
   # kaldirildi; systemd initrd artik tek ve varsayilan yol, secenek reddediliyor.
   # Bu satir thorns-upgrade'i degerlendirme asamasinda kirdi ("no longer has
   # any effect; please remove it"). Davranis degismiyor: zaten true idi.
+  boot.tmp.cleanOnBoot = true;  # /tmp her acilista temizlenir
 }

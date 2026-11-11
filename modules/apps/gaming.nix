@@ -16,7 +16,19 @@
     wineWow64Packages.stable
     winetricks
 
-    retroarch
+    # nixpkgs'teki "retroarch" cekirdeksiz gelir ve icindeki cekirdek
+    # indirici derlemede kapatilmistir; cekirdekler burada secilir.
+    # PS2 / GameCube-Wii / PS3 asagidaki ayri emulatorlerde.
+    (retroarch.withCores (cores: with cores; [
+      mesen            # NES / Famicom
+      snes9x           # SNES
+      mgba             # Game Boy / Color / Advance
+      genesis-plus-gx  # Sega Master System / Mega Drive / Game Gear / Sega CD
+      mupen64plus      # Nintendo 64
+      swanstation      # PlayStation 1
+      ppsspp           # PSP
+      melonds          # Nintendo DS
+    ]))
     pcsx2
     dolphin-emu
     rpcs3

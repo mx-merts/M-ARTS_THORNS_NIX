@@ -31,6 +31,7 @@
       OnAccessPrevention = true;
       OnAccessExcludeUname = "clamav";
       OnAccessExcludeRootUID = true;
+      OnAccessMaxFileSize = "100M";  # anlik tarama siniri (ClamAV varsayilani 5M)
 
     };
 

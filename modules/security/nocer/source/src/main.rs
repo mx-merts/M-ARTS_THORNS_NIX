@@ -1,5 +1,13 @@
 // NOCER — NixOS runtime certificate manager
 // TUI + CLI. Runtime sertifika aç/kapa, rebuild yok. Değişiklik için sudo gerekir.
+//
+// Sertifikanin kullanildigi yerler:
+//   - /run/nocer-ca-bundle.crt (SSL_CERT_FILE vb.: curl, git, python, node, nix)
+//   - Firefox politikasi (Certificates.Install)
+//   - NSS depolari: Firefox profilleri ve ~/.pki/nssdb (Electron/Chromium:
+//     Discord, VS Code, Spotify, Obsidian). Firefox politikayla eklenen
+//     sertifikayi profiline KALICI olarak kopyalar ve listeden cikinca silmez;
+//     bu yuzden kapatma/silme, sertifikayi bu depolardan parmak iziyle temizler.
 
 use std::env;
 use std::fs;
@@ -161,6 +169,289 @@ fn trigger_rebuild() {
     }
 }
 
+// ───────────────────────── NSS depolari ─────────────────────────
+
+/// Programin adi ve surumu: "NOCER-0.0.2".
+const NAME_VERSION: &str = concat!("NOCER-", env!("CARGO_PKG_VERSION"));
+
+/// Tek bir NSS islemi sonucunda kullaniciya gosterilecek ozet.
+#[derive(Default)]
+struct NssReport {
+    firefox_removed: usize,
+    shared_removed: usize,
+    shared_added: bool,
+    firefox_running: bool,
+    errors: Vec<String>,
+}
+
+impl NssReport {
+    /// Tek satirlik ozet; yapilacak bir sey olmadiysa bos.
+    fn summary(&self) -> String {
+        let mut parts = Vec::new();
+        if self.firefox_removed > 0 {
+            parts.push(format!("removed from Firefox ({})", self.firefox_removed));
+        }
+        if self.shared_removed > 0 {
+            parts.push(format!("removed from ~/.pki/nssdb ({})", self.shared_removed));
+        }
+        if self.shared_added {
+            parts.push("added to ~/.pki/nssdb".to_string());
+        }
+        if self.firefox_running && (self.firefox_removed > 0) {
+            parts.push("restart Firefox to apply".to_string());
+        }
+        if let Some(e) = self.errors.first() {
+            parts.push(format!("NSS warning: {e}"));
+        }
+        parts.join("; ")
+    }
+}
+
+/// Sertifikanin sahibi olan kullanici: sudo ile calisiyorsak SUDO_USER,
+/// degilse calisan kullanici. (ev dizini, uid, gid)
+fn target_user() -> Option<(PathBuf, Option<(String, String)>)> {
+    let sudo_user = env::var("SUDO_USER").ok().filter(|u| !u.is_empty() && u != "root");
+    if let Some(user) = sudo_user {
+        let passwd = fs::read_to_string("/etc/passwd").ok()?;
+        let home = passwd.lines().find_map(|l| {
+            let f: Vec<&str> = l.split(':').collect();
+            (f.len() >= 7 && f[0] == user).then(|| PathBuf::from(f[5]))
+        })?;
+        let ids = match (env::var("SUDO_UID"), env::var("SUDO_GID")) {
+            (Ok(u), Ok(g)) if u != "0" => Some((u, g)),
+            _ => None,
+        };
+        return Some((home, ids));
+    }
+    env::var("HOME").ok().filter(|h| !h.is_empty()).map(|h| (PathBuf::from(h), None))
+}
+
+/// certutil komutu; sudo altinda kullanicinin kimligiyle calisir ki NSS
+/// dosyalarinin sahipligi bozulmasin.
+fn certutil(ids: &Option<(String, String)>) -> Command {
+    match ids {
+        Some((uid, gid)) => {
+            let mut c = Command::new("setpriv");
+            c.args(["--reuid", uid, "--regid", gid, "--clear-groups", "--", "certutil"]);
+            c
+        }
+        None => Command::new("certutil"),
+    }
+}
+
+/// (Firefox profilleri, paylasilan NSS depolari)
+fn nss_databases(home: &Path) -> (Vec<PathBuf>, Vec<PathBuf>) {
+    let mut firefox = Vec::new();
+    for base in [".mozilla/firefox", ".config/mozilla/firefox"] {
+        if let Ok(entries) = fs::read_dir(home.join(base)) {
+            for e in entries.flatten() {
+                let p = e.path();
+                if p.join("cert9.db").is_file() {
+                    firefox.push(p);
+                }
+            }
+        }
+    }
+    firefox.sort();
+    let shared = [".pki/nssdb", ".local/share/pki/nssdb"]
+        .iter()
+        .map(|d| home.join(d))
+        .filter(|p| p.join("cert9.db").is_file())
+        .collect();
+    (firefox, shared)
+}
+
+/// SHA-256 parmak izi (buyuk harf, iki nokta yok). `pem` bir dosya yolu ya da
+/// standart girdi olarak verilecek PEM metni olabilir.
+fn fingerprint(file: Option<&Path>, pem: Option<&[u8]>) -> Option<String> {
+    let mut cmd = Command::new("openssl");
+    cmd.args(["x509", "-noout", "-fingerprint", "-sha256"]);
+    if let Some(f) = file {
+        cmd.arg("-in").arg(f);
+    }
+    cmd.stdin(if pem.is_some() { Stdio::piped() } else { Stdio::null() })
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+    let mut child = cmd.spawn().ok()?;
+    if let Some(data) = pem {
+        use std::io::Write;
+        child.stdin.take()?.write_all(data).ok()?;
+    }
+    let out = child.wait_with_output().ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let text = String::from_utf8_lossy(&out.stdout);
+    let value = text.trim().rsplit_once('=')?.1;
+    Some(value.replace(':', "").to_ascii_uppercase())
+}
+
+/// certutil -L ciktisindaki takma adlar (nickname).
+fn nss_nicknames(db: &Path, ids: &Option<(String, String)>) -> Result<Vec<String>, String> {
+    let out = certutil(ids)
+        .arg("-L")
+        .arg("-d")
+        .arg(format!("sql:{}", db.display()))
+        .stdin(Stdio::null())
+        .stderr(Stdio::null())
+        .output()
+        .map_err(|e| format!("certutil: {e}"))?;
+    if !out.status.success() {
+        return Err(format!("certutil -L failed for {}", db.display()));
+    }
+    let text = String::from_utf8_lossy(&out.stdout);
+    let mut names = Vec::new();
+    let mut in_body = false;
+    for line in text.lines() {
+        if line.contains("SSL,S/MIME,JAR/XPI") {
+            in_body = true;
+            continue;
+        }
+        let line = line.trim_end();
+        if !in_body || line.trim().is_empty() {
+            continue;
+        }
+        // Son kelime guven bayraklaridir ("CT,C," gibi); geri kalani takma ad.
+        if let Some((nick, _trust)) = line.rsplit_once(char::is_whitespace) {
+            let nick = nick.trim();
+            if !nick.is_empty() && !names.iter().any(|n| n == nick) {
+                names.push(nick.to_string());
+            }
+        }
+    }
+    Ok(names)
+}
+
+/// Bir takma adin altindaki sertifikalarin parmak izleri.
+fn nss_fingerprints(db: &Path, nick: &str, ids: &Option<(String, String)>) -> Vec<String> {
+    let Ok(out) = certutil(ids)
+        .arg("-L")
+        .arg("-d")
+        .arg(format!("sql:{}", db.display()))
+        .args(["-n", nick, "-a"])
+        .stdin(Stdio::null())
+        .stderr(Stdio::null())
+        .output()
+    else {
+        return Vec::new();
+    };
+    let text = String::from_utf8_lossy(&out.stdout);
+    let mut fps = Vec::new();
+    let mut block = String::new();
+    for line in text.lines() {
+        if line.starts_with("-----BEGIN CERTIFICATE-----") {
+            block.clear();
+        }
+        block.push_str(line);
+        block.push('\n');
+        if line.starts_with("-----END CERTIFICATE-----") {
+            if let Some(fp) = fingerprint(None, Some(block.as_bytes())) {
+                fps.push(fp);
+            }
+            block.clear();
+        }
+    }
+    fps
+}
+
+/// Parmak izi eslesen sertifikayi bir depodan siler; silinen kayit sayisi.
+fn purge_db(db: &Path, fp: &str, ids: &Option<(String, String)>, errors: &mut Vec<String>) -> usize {
+    let nicks = match nss_nicknames(db, ids) {
+        Ok(n) => n,
+        Err(e) => {
+            errors.push(e);
+            return 0;
+        }
+    };
+    let mut removed = 0;
+    for nick in nicks {
+        // Ayni takma adin altinda birden fazla sertifika olabilir: eslesme
+        // kalmayana kadar sil (en fazla 5 tur, sonsuz donguye karsi).
+        for _ in 0..5 {
+            if !nss_fingerprints(db, &nick, ids).iter().any(|f| f == fp) {
+                break;
+            }
+            let ok = certutil(ids)
+                .arg("-D")
+                .arg("-d")
+                .arg(format!("sql:{}", db.display()))
+                .args(["-n", &nick])
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status()
+                .map(|s| s.success())
+                .unwrap_or(false);
+            if !ok {
+                errors.push(format!("could not delete '{nick}' from {}", db.display()));
+                break;
+            }
+            removed += 1;
+        }
+    }
+    removed
+}
+
+/// Firefox calisiyor mu? (/proc/*/comm)
+fn firefox_running() -> bool {
+    let Ok(entries) = fs::read_dir("/proc") else { return false };
+    entries.flatten().any(|e| {
+        fs::read_to_string(e.path().join("comm"))
+            .map(|c| {
+                let c = c.trim();
+                c == "firefox" || c == "firefox-bin" || c.starts_with(".firefox")
+            })
+            .unwrap_or(false)
+    })
+}
+
+/// Kapatma/silme: sertifikayi tum NSS depolarindan parmak iziyle temizler.
+fn purge_from_nss(cert: &Path) -> NssReport {
+    let mut r = NssReport::default();
+    let Some(fp) = fingerprint(Some(cert), None) else {
+        r.errors.push("could not read the certificate fingerprint".into());
+        return r;
+    };
+    let Some((home, ids)) = target_user() else { return r };
+    let (firefox, shared) = nss_databases(&home);
+    for db in &firefox {
+        r.firefox_removed += purge_db(db, &fp, &ids, &mut r.errors);
+    }
+    for db in &shared {
+        r.shared_removed += purge_db(db, &fp, &ids, &mut r.errors);
+    }
+    r.firefox_running = !firefox.is_empty() && firefox_running();
+    r
+}
+
+/// Acma: sertifikayi paylasilan NSS deposuna ekler (Electron/Chromium).
+/// Firefox'a politika uzerinden, bir sonraki acilista eklenir.
+fn add_to_shared_nss(cert: &Path, name: &str) -> NssReport {
+    let mut r = NssReport::default();
+    let Some((home, ids)) = target_user() else { return r };
+    let (_, shared) = nss_databases(&home);
+    for db in &shared {
+        let ok = certutil(&ids)
+            .arg("-A")
+            .arg("-d")
+            .arg(format!("sql:{}", db.display()))
+            .args(["-n", &format!("NOCER - {name}"), "-t", "C,,", "-i"])
+            .arg(cert)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+        if ok {
+            r.shared_added = true;
+        } else {
+            r.errors.push(format!("could not add to {}", db.display()));
+        }
+    }
+    r
+}
+
 // ───────────────────────── fzf ─────────────────────────
 
 fn run_fzf() -> io::Result<Option<PathBuf>> {
@@ -175,7 +466,7 @@ fn run_fzf() -> io::Result<Option<PathBuf>> {
 
     let cmd = format!(
         "find {dirs_joined} -maxdepth 3 -type f \
-         \\( -iname '*.crt' -o -iname '*.pem' -o -iname '*.cer' \\) 2>/dev/null \
+         \\( -iname '*.crt' -o -iname '*.pem' -o -iname '*.cer' -o -iname '*.der' \\) 2>/dev/null \
          | fzf --prompt='Select certificate> ' --height=60% --reverse"
     );
 
@@ -243,6 +534,12 @@ fn add_cert(source: &Path) -> io::Result<()> {
         // DER/binary — PEM'e çevirerek kaydet
         convert_der_to_pem(source, &dest)?;
     }
+    // Sertifikalar gizli degil: kullanici kimligiyle calisan certutil ve
+    // Firefox okuyabilsin (indirilen dosya 0600 olabilir).
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&dest, fs::Permissions::from_mode(0o644))?;
+    }
 
     let id = idx.next_id;
     idx.next_id += 1;
@@ -257,7 +554,8 @@ fn add_cert(source: &Path) -> io::Result<()> {
     Ok(())
 }
 
-fn set_enabled(name: &str, enabled: bool) -> io::Result<()> {
+/// Acar/kapatir; NSS depolarinda yapilanlarin ozetini dondurur.
+fn set_enabled(name: &str, enabled: bool) -> io::Result<String> {
     let mut idx = Index::load()?;
     let pos = idx.position(name)
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound,
@@ -280,16 +578,20 @@ fn set_enabled(name: &str, enabled: bool) -> io::Result<()> {
     write_firefox_policy(&idx)?;
     trigger_rebuild();
 
-    Ok(())
+    let report = if enabled { add_to_shared_nss(&src, name) } else { purge_from_nss(&src) };
+    Ok(report.summary())
 }
 
-fn remove_cert(name: &str) -> io::Result<()> {
+/// Siler; NSS depolarinda yapilanlarin ozetini dondurur.
+fn remove_cert(name: &str) -> io::Result<String> {
     let mut idx = Index::load()?;
     let pos = idx.position(name)
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound,
             format!("'{name}' not found")))?;
 
     let entry = idx.certs.remove(pos);
+    // Dosya silinmeden once: parmak izi icin sertifika gerekiyor.
+    let report = purge_from_nss(&certs_dir().join(&entry.file));
     let _ = fs::remove_file(certs_dir().join(&entry.file));
     let _ = fs::remove_file(enabled_dir().join(&entry.file));
 
@@ -297,7 +599,16 @@ fn remove_cert(name: &str) -> io::Result<()> {
     write_firefox_policy(&idx)?;
     trigger_rebuild();
 
-    Ok(())
+    Ok(report.summary())
+}
+
+/// "eylem 'ad'" + varsa NSS ozeti (TUI durum satiri ve CLI icin).
+fn with_summary(action: &str, name: &str, summary: &str) -> String {
+    if summary.is_empty() {
+        format!("{action} '{name}'")
+    } else {
+        format!("{action} '{name}' — {summary}")
+    }
 }
 
 fn list_certs() -> io::Result<()> {
@@ -318,8 +629,12 @@ fn list_certs() -> io::Result<()> {
 // ───────────────────────── CLI ─────────────────────────
 
 #[derive(Parser)]
-#[command(name = "nocer", version, about = "NixOS runtime certificate manager")]
+#[command(name = "nocer", about = "NixOS runtime certificate manager", disable_version_flag = true)]
 struct Cli {
+    /// Print the version (NOCER-x.y.z)
+    #[arg(short = 'V', long = "version")]
+    version: bool,
+
     #[command(subcommand)]
     command: Option<Commands>,
 }
@@ -402,10 +717,10 @@ fn tui_loop<B: Backend + io::Write>(terminal: &mut Terminal<B>) -> io::Result<()
                             let new_state = !c.enabled;
                             let r = set_enabled(&name, new_state);
                             app.status = match r {
-                                Ok(_) => format!(
-                                    "{} '{}'",
+                                Ok(s) => with_summary(
                                     if new_state { "enabled" } else { "disabled" },
-                                    name
+                                    &name,
+                                    &s,
                                 ),
                                 Err(e) => format!("error: {e}"),
                             };
@@ -450,7 +765,7 @@ fn tui_loop<B: Backend + io::Write>(terminal: &mut Terminal<B>) -> io::Result<()
                             let name = c.name.clone();
                             let r = remove_cert(&name);
                             app.status = match r {
-                                Ok(_) => format!("removed '{name}'"),
+                                Ok(s) => with_summary("removed", &name, &s),
                                 Err(e) => format!("error: {e}"),
                             };
                             if app.selected > 0 && app.selected >= i {
@@ -486,7 +801,7 @@ fn draw(f: &mut ratatui::Frame, idx: &Index, app: &mut App) {
     let title = Paragraph::new(Line::from(vec![
         Span::styled(" NOCER ", Style::default()
             .fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-        Span::styled("· NixOS Certificate Manager ",
+        Span::styled(format!("· {NAME_VERSION} · NixOS Certificate Manager "),
             Style::default().fg(Color::DarkGray)),
     ]))
     .block(Block::default().borders(Borders::ALL));
@@ -589,6 +904,12 @@ fn centered_rect(pct_x: u16, pct_y: u16, area: ratatui::layout::Rect) -> ratatui
 // ───────────────────────── main ─────────────────────────
 
 fn main() -> io::Result<()> {
+    let cli = Cli::parse();
+    if cli.version {
+        println!("{NAME_VERSION}");
+        return Ok(());
+    }
+
     ensure_dirs()?;
 
     // Firefox policy'yi her başlatmada güncelle (boş/eksik olmasın)
@@ -596,7 +917,6 @@ fn main() -> io::Result<()> {
         let _ = write_firefox_policy(&idx);
     }
 
-    let cli = Cli::parse();
     let result = match cli.command {
         Some(Commands::Add { path }) => {
             add_cert(&path).map(|_| {
@@ -605,13 +925,13 @@ fn main() -> io::Result<()> {
         }
         Some(Commands::List) => list_certs(),
         Some(Commands::Enable { name }) => {
-            set_enabled(&name, true).map(|_| println!("● enabled '{name}'"))
+            set_enabled(&name, true).map(|s| println!("● {}", with_summary("enabled", &name, &s)))
         }
         Some(Commands::Disable { name }) => {
-            set_enabled(&name, false).map(|_| println!("○ disabled '{name}'"))
+            set_enabled(&name, false).map(|s| println!("○ {}", with_summary("disabled", &name, &s)))
         }
         Some(Commands::Remove { name }) => {
-            remove_cert(&name).map(|_| println!("✖ removed '{name}'"))
+            remove_cert(&name).map(|s| println!("✖ {}", with_summary("removed", &name, &s)))
         }
         None => tui(),
     };

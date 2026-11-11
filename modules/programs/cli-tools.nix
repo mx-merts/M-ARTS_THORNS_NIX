@@ -63,4 +63,15 @@
       init.defaultBranch = "main";
     };
   };
+
+
+  # atuin (Ctrl+R): fzf'in kisayollarindan SONRA yuklenmeli; ikisi de
+  # Ctrl+R'yi bagliyor, sonra gelen kazaniyor. 1200 = fzf'ten sonra,
+  # syntax-highlighting'den once.
+  programs.zsh.interactiveShellInit = lib.mkOrder 1200 ''
+    eval "$(${pkgs.atuin}/bin/atuin init zsh --disable-up-arrow)"
+  '';
+
+  
 }
+

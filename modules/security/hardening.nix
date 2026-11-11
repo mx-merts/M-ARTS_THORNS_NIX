@@ -10,7 +10,7 @@
     "kernel.kptr_restrict" = 2;       # kernel bellek adreslerini herkesten gizle (eskiden 1)
     "kernel.dmesg_restrict" = 1;      # kernel loglarini sadece root okuyabilsin
     "kernel.yama.ptrace_scope" = 1;   # bir program baska programin bellegini okuyamasin
-    "kernel.perf_event_paranoid" = 3; # perf olaylari sadece root (kernel bilgi sizintisi)
+    "kernel.perf_event_paranoid" = 3; # kernel profillemesi sadece root (standart cekirdekte 3 = 2)
 
     # --- eBPF: yaygin yetki yukseltme yolu ---
     # (isminde "net" gecse de baglantiyla ilgisi yok, sadece BPF JIT'i sertlestirir)
@@ -74,7 +74,7 @@
     "firewire-core" "firewire-ohci" "firewire-sbp2"
   ];
 
-  # Kernel imajini ve /dev/mem'i yazmaya kapatir, kexec'i engeller.
+  # Calisan kernel degistirilemez: kexec ve hibernate kapali.
   # Hibernate'i kapatir ama zaten zram kullandigimiz icin hibernate yok.
   security.protectKernelImage = true;
 

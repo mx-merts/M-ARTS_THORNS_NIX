@@ -4,8 +4,5 @@
     isNormalUser = true;
     description = "M-ARTS";
     extraGroups = [ "networkmanager" "wheel" ];
-    packages = with pkgs; [
-      kdePackages.kate
-    ];
   };
 }

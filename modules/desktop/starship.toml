@@ -27,7 +27,7 @@ error_symbol = "[ ](bold fg:244)"
 disabled = true
 
 [git_branch]
-style = "bg: 252"
+style = "bg:252"
 symbol = "󰘬"
 truncation_length = 12
 truncation_symbol = ""
