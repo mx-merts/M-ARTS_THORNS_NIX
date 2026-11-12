@@ -60,6 +60,12 @@ pub fn run(cmd: &str, args: &[&str], secs: u64) -> Result<String, String> {
 pub fn run_input(cmd: &str, args: &[&str], input: Option<&str>, secs: u64) -> Result<String, String> {
     let mut child = Command::new(cmd)
         .args(args)
+        // systemd gives skin-watch RUNTIME_DIRECTORY=/run/skin (and
+        // STATE_DIRECTORY). warp-cli reads RUNTIME_DIRECTORY as the place of
+        // warp-svc's socket and then cannot find the daemon: keep them away
+        // from every command SKIN runs.
+        .env_remove("RUNTIME_DIRECTORY")
+        .env_remove("STATE_DIRECTORY")
         .stdin(if input.is_some() { Stdio::piped() } else { Stdio::null() })
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

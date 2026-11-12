@@ -1,4 +1,4 @@
-# SKIN-0.0.3 — Network Membrane
+# SKIN-0.0.4 — Network Membrane
 
 > THORNS'un derisi: dış dünyayla aradaki zar. Ağ güvenliğinin bütün katmanlarını tek komutla sıkar ya da gevşetir. SPINE güvenliği izler, NERV donanımı; SKIN ağı.
 
