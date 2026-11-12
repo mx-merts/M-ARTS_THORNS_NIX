@@ -74,14 +74,15 @@
     color7  #bac2de
     color15 #a6adc8
 
-    # NERV basligi (ƝΞᚱꝞ): bu dort harf Junicode'dan cizilir, boylari esit olsun
-    symbol_map U+019D,U+039E,U+16B1,U+A75E Junicode
+    # NERV (ƝΞᚱꝞ) ve SKIN (ΣꝀᛁƝ) basliklari: bu harfler Junicode'dan
+    # cizilir, boylari esit olsun
+    symbol_map U+019D,U+039E,U+16B1,U+A75E,U+03A3,U+A740,U+16C1 Junicode
   '';
 
   # ─── Nerd Fonts ───
   fonts.packages = with pkgs; [
     nerd-fonts.jetbrains-mono
     nerd-fonts.fira-code
-    junicode   # NERV basligi (ortacag harfleri + runler)
+    junicode   # NERV ve SKIN basliklari (ortacag harfleri + runler)
   ];
 }

@@ -24,6 +24,7 @@ Flake tabanlı, modüler ve deklaratif bir NixOS yapılandırması. **Taşınabi
 | Casper Excalibur (fan, klavye RGB) | `modules/hardware/excalibur-wmi.nix`, `excalibur-rgb.nix` |
 | DNS / gizlilik ayarı | `modules/network/dns.nix`, `privacy.nix` |
 | VPN (Proton) / Cloudflare WARP | `modules/network/vpn.nix`, `warp.nix` |
+| Ağ zarı: SEAL / SEVER / ROT, kill switch, kafe girişi | `modules/network/skin/` (SKIN) |
 | Güvenlik duvarı / port açma | `modules/security/firewall.nix` |
 | Kernel sertleştirme (sysctl, modül kara listesi) | `modules/security/hardening.nix` |
 | Virüs tarama (ClamAV), yanlış alarm listesi | `modules/security/scanning.nix` |
@@ -47,7 +48,7 @@ Flake tabanlı, modüler ve deklaratif bir NixOS yapılandırması. **Taşınabi
 | `push.sh` | Değişiklikleri GitHub'a yedekleyen betik |
 | `hosts/portable/` | Bu makinenin profili ve donanım taraması |
 | `modules/core/` | Sistemin iskeleti (`boot`, `nix-settings`, `locale`, `networking`, `auto-upgrade`) |
-| `modules/network/` | DNS (`dnscrypt-proxy`), Proton VPN, Cloudflare WARP, gizlilik ve TCP ayarları |
+| `modules/network/` | DNS (`dnscrypt-proxy`), Proton VPN, Cloudflare WARP, gizlilik ve TCP ayarları, SKIN |
 | `modules/hardware/` | Fiziksel donanım (ses, Bluetooth, çevre birimleri, sensörler, Excalibur sürücüsü, NERV) |
 | `modules/hardware/gpu/` | NVIDIA girdileri: ortak ayarlar (`nvidia-common`), yeni kartlar (`nvidia`), eski kartlar (`nvidia-legacy`), bu laptop (`prime`) |
 | `modules/security/` | Güvenlik katmanları (aşağıdaki "Güvenlik" bölümüne bakın) |
@@ -65,6 +66,7 @@ nixpkgs'ta bulunmayan, bu depo için özel olarak geliştirilmiş modüller:
 - **SPINE - güvenlik olay toplayıcı ve bildirim servisi (Rust).** `modules/security/spine/` altındadır. LKRG, AIDE, auditd ve ClamAV'dan gelen olayları toplar ve masaüstü bildirimine çevirir. Hiçbir şeyi engellemez, sadece haber verir. `warn` ve `crit` seviyesindeki bildirimler sen kapatana kadar ekranda kalır.
 - **NOCER - NixOS sertifika yöneticisi (Rust).** `modules/security/nocer/` altındadır. Okul (MEB) gibi kurumların ağ sertifikalarını rebuild yapmadan açıp kapatır; Firefox politikalarını da buna göre günceller. Ayrıntılar için [kendi README dosyasına](modules/security/nocer/README.md) bakın.
 - **NERV - donanım sinir sistemi (Rust).** `modules/hardware/nerv/` altındadır. Açılışta bütün donanımı tarar, sürücüsü eksik parçaları bağlar; girişte hangi GRUB girdisinin uygun olduğunu ve bağlanamayan parçaları bildirir. `NERV` komutu bağlı parçaları listeler, `NERV <PARÇA> <N> ENABLE | DISABLE | INFO | RESET` ile parçalar yönetilir. Ayrıntılar için [kendi README dosyasına](modules/hardware/nerv/README.md) bakın.
+- **SKIN - ağ zarı (Rust).** `modules/network/skin/` altındadır. Ağ güvenliğinin beş katmanını (DNS, TUNNEL, KILLSWITCH, LAN, IDENTITY) tek komutla `SEAL` (en güçlü, her açılışta), `SEVER` (kafe giriş sayfası için, 10 dk) ya da `ROT` (son çare, 30 dk) durumuna getirir; `SKIN ROT KS` gibi tek katman da değiştirilebilir. Kill switch nftables ile ağdan önce kurulur; tünel düşünce ya da DNS susunca bildirim gönderir. Ayrıntılar için [kendi README dosyasına](modules/network/skin/README.md) bakın.
 - **thorns-aide - dosya bütünlüğü denetimi.** `modules/security/aide/` altındadır. AIDE'yi sadece `/nix/store` ve git'in kapsamadığı yerlerde çalıştırır: `/boot` ve oturum açılışında çalışan "kalıcılık noktaları".
 - **CSCAN - elle virüs tarama.** `modules/programs/cscan.nix` dosyasındadır. ClamAV ile `/`, `/home`, `/boot` ya da verilen yolu paralel olarak tarar.
 - **JRUN - `.jar` çalıştırıcı.** `modules/programs/jrun.nix` dosyasındadır. Java `.jar` dosyalarını sorunsuz çalıştırmak için geliştirilmiştir.

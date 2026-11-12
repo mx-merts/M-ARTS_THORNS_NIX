@@ -34,11 +34,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1794042290,
-        "narHash": "sha256-ziZn2PvCJE5JEEpqTdxXwJpPB+L3YqoCpTAMCzyaP3U=",
+        "lastModified": 1794386569,
+        "narHash": "sha256-x9sADJvoVG0L6RejZB+/BB4YiGZFBZrfTlhF4uBq1tQ=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "f4a03c008967841f2a0b3cb7c436fc6fc31671f6",
+        "rev": "d4f25a3e562008648d45bcf2d70bcc7422cad84e",
         "type": "github"
       },
       "original": {
@@ -50,11 +50,11 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1793540411,
-        "narHash": "sha256-fiPJ88izTVucjeo2EQ3jk4aWmLg03I1D4vxnX2QjEgE=",
+        "lastModified": 1794042290,
+        "narHash": "sha256-ziZn2PvCJE5JEEpqTdxXwJpPB+L3YqoCpTAMCzyaP3U=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "0bb2eedc20e4739f29e8045034f2828ad7054f8f",
+        "rev": "f4a03c008967841f2a0b3cb7c436fc6fc31671f6",
         "type": "github"
       },
       "original": {
@@ -79,11 +79,11 @@
         "ski": "ski"
       },
       "locked": {
-        "lastModified": 1794229563,
-        "narHash": "sha256-ttMqKdHjcIGyKLfYxapVDWMOHf1lGmW8ZhhifzwrSzU=",
+        "lastModified": 1794403579,
+        "narHash": "sha256-d5bOqbZ+tfsjq/kmGVbUAQZMl/llFVrdRF72z23dW6E=",
         "owner": "ilyamiro",
         "repo": "serpantinum",
-        "rev": "320fece13b69451e8e46e2285c1574dd2c0ad1de",
+        "rev": "89468d311f77d4bedbc53a2a4e2e13f836b04cbb",
         "type": "github"
       },
       "original": {
@@ -111,11 +111,11 @@
     "ski": {
       "flake": false,
       "locked": {
-        "lastModified": 1793704142,
-        "narHash": "sha256-wxnRqzcNTWfa9ZlHkFtwJIlhxmgo+YYSmGKozIjLiBg=",
+        "lastModified": 1794135603,
+        "narHash": "sha256-qiNSb+vTGfmaTW62hgHC+uEj/xWyrbxgNAyObMTgne8=",
         "owner": "ilyamiro",
         "repo": "Ski",
-        "rev": "807c744724bb7f34de09f737973aa73391a931b1",
+        "rev": "afff38b542c0dc74d204b275e70a5d0d0a8f5de9",
         "type": "github"
       },
       "original": {

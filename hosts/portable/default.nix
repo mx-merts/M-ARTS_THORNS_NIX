@@ -21,6 +21,7 @@ in
     ../../modules/network/warp.nix
     ../../modules/network/tuning.nix
     ../../modules/network/privacy.nix
+    ../../modules/network/skin
 
     ../../modules/hardware/agnostic.nix
     ../../modules/hardware/audio.nix
@@ -79,6 +80,8 @@ in
   programs.nocer.enable = true;
   programs.spine.enable = true;
   programs.nerv.enable = true;
+  # Ev agi git'e yazilmaz: evde bir kez "sudo SKIN TRUST" (bkz. SKIN README)
+  programs.skin.enable = true;
 
   hardware.excaliburRgb = {
     enable = true;

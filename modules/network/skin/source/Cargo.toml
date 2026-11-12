@@ -1,0 +1,20 @@
+[package]
+name = "skin"
+version = "0.0.1"
+edition = "2021"
+authors = ["M-ARTS"]
+description = "SKIN - network membrane for THORNS (seal, sever, rot)"
+license = "CC-BY-NC-SA-4.0"
+repository = "https://github.com/mx-merts/M-ARTS_THORNS_NIX"
+
+[[bin]]
+name = "SKIN"
+path = "src/main.rs"
+
+[dependencies]
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
+panic = "abort"
