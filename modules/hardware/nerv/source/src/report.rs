@@ -9,7 +9,7 @@ use std::io::IsTerminal;
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 const RULE: usize = 68;
 const NAME_W: usize = 36;
-const DRIVER_W: usize = 11;
+const DRIVER_W: usize = 14;
 
 #[derive(Clone, Copy)]
 pub enum Role {

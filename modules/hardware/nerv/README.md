@@ -1,4 +1,4 @@
-# NERV-0.0.1 — Hardware Nervous System
+# NERV-0.0.2 — Hardware Nervous System
 
 > THORNS'un sinir sistemi. Sistemin takıldığı her bilgisayarda donanımı tarar, eksik sürücüleri bağlar, hangi GRUB girdisinin uygun olduğunu söyler ve parçaları terminalden açıp kapatmanı sağlar. SPINE güvenliği izler; NERV donanımı.
 

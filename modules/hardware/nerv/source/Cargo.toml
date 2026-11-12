@@ -1,6 +1,6 @@
 [package]
 name = "nerv"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 authors = ["M-ARTS"]
 description = "NERV - hardware nervous system for THORNS (scan, report, bind, control)"

@@ -103,6 +103,23 @@ fn bind_targets(dev: &Path) -> Vec<PathBuf> {
 
 // ----------------------------------------------------------------- safety ---
 
+/// Disabling this would leave no real keyboard (receivers and gaming mice
+/// do not count). Allowed, but only after typing DISABLE.
+fn last_keyboard(scan: &Scan, d: &Device) -> bool {
+    d.part == Part::Keyboard
+        && !scan.of(Part::Keyboard).iter().any(|k| k.sys != d.sys && k.state != State::Off && !k.mixed)
+}
+
+fn confirm_last_keyboard(paint: &Paint, n: usize) -> bool {
+    println!("   {}", paint.c(Role::Rec, "⚠  THIS IS YOUR LAST KEYBOARD"));
+    println!("   {}", paint.c(Role::Dim, &format!("Back on: paste  sudo NERV KB {n} ENABLE  with the mouse, or reboot.")));
+    print!("   {} ", paint.c(Role::Rec, "Type DISABLE to go on:"));
+    let _ = std::io::Write::flush(&mut std::io::stdout());
+    let mut line = String::new();
+    let _ = std::io::stdin().read_line(&mut line);
+    line.trim().eq_ignore_ascii_case("DISABLE")
+}
+
 fn refusal(scan: &Scan, d: &Device, action: Action) -> Option<&'static str> {
     let harmful = matches!(action, Action::Disable | Action::Reset);
     if harmful && scan.root_paths.iter().any(|r| r.starts_with(&d.sys)) {
@@ -110,12 +127,6 @@ fn refusal(scan: &Scan, d: &Device, action: Action) -> Option<&'static str> {
     }
     if d.part == Part::Gpu && harmful {
         return Some("GPUS ARE NOT SWITCHED HERE ── pick a GRUB entry instead");
-    }
-    if d.part == Part::Keyboard && action == Action::Disable {
-        let on = scan.of(Part::Keyboard).iter().filter(|k| k.state != State::Off).count();
-        if on <= 1 {
-            return Some("ONLY KEYBOARD");
-        }
     }
     if d.part == Part::Fingerprint && d.state == State::NotBound && action == Action::Enable {
         return Some("FINGERPRINT SUPPORT (fprintd) IS NOT ENABLED IN THORNS");
@@ -333,6 +344,10 @@ pub fn run(paint: &Paint, part: Part, n: usize, action: Action) -> i32 {
     }
     let policy = Policy::new();
     let mut o = Out { paint, ok: true };
+    if action == Action::Disable && last_keyboard(&scan, d) && !confirm_last_keyboard(paint, n) {
+        println!("{}", report::verdict(paint, State::On, "CANCELLED", "nothing was changed"));
+        return 1;
+    }
     let result = match action {
         Action::Enable => enable(&mut o, &policy, d),
         Action::Disable => disable(&mut o, d),

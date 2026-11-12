@@ -262,6 +262,13 @@ pub fn audio(ctx: &mut Ctx, out: &mut Vec<Device>) {
 
 // ----------------------------------------------------------------- NETWORK ---
 
+/// "Intel AX201 Bluetooth" -> "AX201" (the card model on Intel CNVi Bluetooth).
+fn intel_bt_model(name: &str) -> Option<String> {
+    name.split_whitespace()
+        .find(|t| ["AX", "BE", "AC"].iter().any(|p| t.starts_with(p)) && t[2..].starts_with(|c: char| c.is_ascii_digit()))
+        .map(str::to_string)
+}
+
 fn pci_vendor_short(pci: Option<&Pci>) -> String {
     pci.and_then(|p| p.vendor_name.as_deref()).map(sys::short_vendor).unwrap_or_default()
 }
@@ -309,6 +316,14 @@ pub fn network(ctx: &mut Ctx, out: &mut Vec<Device>) {
             d.name = sys::join_name(&v, &sys::short_device(&sub));
         }
         d.driver = sys::link_name(&link.join("driver")).or(d.driver);
+        // Intel CNVi: the Wi-Fi half has no product name of its own, the
+        // Bluetooth half (same card) does: "AX201 Bluetooth" -> "Intel AX201 Wi-Fi".
+        if d.name.contains("CNVi") {
+            if let Some(model) = ctx.usb.iter().filter(|u| u.vendor == 0x8087).find_map(|u| intel_bt_model(&u.name)) {
+                d.add("CARD", format!("{model} (named after its Bluetooth half)"));
+                d.name = format!("Intel {model} Wi-Fi");
+            }
+        }
         let conn = nm_connection(&iface);
         let up = sys::read_at(&e, "operstate").as_deref() == Some("up");
         if wifi {
@@ -504,6 +519,28 @@ pub fn fingerprints(ctx: &mut Ctx, out: &mut Vec<Device>) {
 
 // ------------------------------------------------------- TOUCHPAD / KEYBOARD ---
 
+/// What a USB device with keyboard inputs really is. Gaming mice and
+/// wireless receivers also expose a "keyboard" interface (macro keys).
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Kind {
+    Keyboard,
+    /// Receiver / dongle: may carry a keyboard, may not. Never a trusted spare.
+    Receiver,
+    Mouse,
+}
+
+fn usb_kind(kinds: Option<&Vec<&'static str>>, product: &str) -> Kind {
+    let has_mouse = kinds.is_some_and(|k| k.contains(&"MOUSE"));
+    let p = product.to_lowercase();
+    if !has_mouse || p.contains("keyboard") || p.contains("kbd") {
+        Kind::Keyboard
+    } else if ["receiver", "dongle", "unifying", "nano", "lightspeed"].iter().any(|w| p.contains(w)) {
+        Kind::Receiver
+    } else {
+        Kind::Mouse
+    }
+}
+
 struct Input {
     path: PathBuf,
     name: String,
@@ -619,6 +656,18 @@ pub fn inputs(ctx: &mut Ctx, out: &mut Vec<Device>) {
         }
         for (key, members) in groups {
             let first = members[0];
+            // Gaming mice and receivers also expose a "keyboard" interface.
+            let usb_dev = first.usb.as_ref().and_then(|u| ctx.usb_at(u));
+            let kind = match usb_dev {
+                Some(u) if part == Part::Keyboard => usb_kind(ctx.input_kinds.get(&u.path), u.product_name.as_deref().unwrap_or("")),
+                _ => Kind::Keyboard,
+            };
+            if kind == Kind::Mouse {
+                if let Some(u) = usb_dev {
+                    ctx.input_kinds.insert(u.path.clone(), vec!["MOUSE"]);
+                }
+                continue; // listed under USB as MOUSE
+            }
             let mut d = match first.usb.as_ref().and_then(|u| ctx.usb_at(u)) {
                 Some(u) => {
                     let mut d = ctx.usb_device(part, u);
@@ -637,6 +686,12 @@ pub fn inputs(ctx: &mut Ctx, out: &mut Vec<Device>) {
                 d.note = if part == Part::Touchpad { format!("ACTIVE · {}", input_note(first)) } else { input_note(first).into() };
             }
             d.add("INPUTS", members.iter().map(|m| m.name.clone()).collect::<Vec<_>>().join(" + "));
+            if kind == Kind::Receiver {
+                d.mixed = true;
+                if d.state == State::On {
+                    d.note = "RECEIVER · USB".into();
+                }
+            }
             out.push(d);
         }
     }
@@ -971,6 +1026,22 @@ pub fn batteries(out: &mut Vec<Device>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tells_mice_from_keyboards() {
+        let both = vec!["MOUSE", "KEYBOARD"];
+        assert!(usb_kind(Some(&both), "TUF GAMING M4 WIRELESS") == Kind::Mouse);
+        assert!(usb_kind(Some(&both), "USB Receiver") == Kind::Receiver);
+        assert!(usb_kind(Some(&both), "K400 Plus Wireless Keyboard") == Kind::Keyboard);
+        assert!(usb_kind(None, "Dell KB216 Wired Keyboard") == Kind::Keyboard);
+    }
+
+    #[test]
+    fn names_intel_cnvi_cards() {
+        assert_eq!(intel_bt_model("Intel AX201 Bluetooth").as_deref(), Some("AX201"));
+        assert_eq!(intel_bt_model("Intel BE200 Bluetooth").as_deref(), Some("BE200"));
+        assert_eq!(intel_bt_model("Intel Bluetooth 9460/9560 Jefferson Peak (JfP)"), None);
+    }
 
     #[test]
     fn knows_fingerprint_readers() {

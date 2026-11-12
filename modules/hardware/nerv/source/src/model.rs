@@ -142,6 +142,8 @@ pub struct Device {
     pub info: Vec<(String, String)>,
     /// "vvvv:pppp" when known.
     pub id: Option<String>,
+    /// Keyboard that is also a mouse (receivers): never counted as a spare.
+    pub mixed: bool,
 }
 
 impl Device {
@@ -157,6 +159,7 @@ impl Device {
             control: Control::None,
             info: Vec::new(),
             id: None,
+            mixed: false,
         }
     }
 

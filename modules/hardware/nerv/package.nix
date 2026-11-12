@@ -12,7 +12,7 @@
 
 rustPlatform.buildRustPackage {
   pname = "nerv";
-  version = "0.0.1";
+  version = "0.0.2";
 
   src = ./source;
   cargoLock.lockFile = ./source/Cargo.lock;
@@ -36,7 +36,7 @@ rustPlatform.buildRustPackage {
   '';
 
   meta = with lib; {
-    description = "NERV-0.0.1: hardware nervous system for THORNS (scan, report, bind, control)";
+    description = "NERV-0.0.2: hardware nervous system for THORNS (scan, report, bind, control)";
     homepage = "https://github.com/mx-merts/M-ARTS_THORNS_NIX";
     license = licenses.cc-by-nc-sa-40;
     mainProgram = "NERV";
