@@ -9,7 +9,7 @@ use std::process::{Command, Stdio};
 fn send(title: &str, body: &str, sticky: bool) {
     let esc = body.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
     let _ = Command::new("notify-send")
-        .args(["-a", "ΣꝀᛁƝ", "-i", "network-wireless", "-t", if sticky { "0" } else { "-1" }, title, &esc])
+        .args(["-a", "ᛊᛕᛁȠ", "-i", "network-wireless", "-t", if sticky { "0" } else { "-1" }, title, &esc])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status();

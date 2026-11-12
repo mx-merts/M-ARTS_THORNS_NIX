@@ -66,13 +66,13 @@ impl Paint {
         }
     }
 
-    /// ΣꝀᛁƝ in a graphical terminal (Junicode via kitty symbol_map, italic Ɲ
+    /// ᛊᛕᛁȠ in a graphical terminal (Junicode via kitty symbol_map, italic Ƞ
     /// like NERV), plain SKIN on the Linux console and in pipes.
     pub fn title(&self) -> String {
         if self.console || !self.color {
             return self.c(Role::Title, "SKIN");
         }
-        format!("{}ΣꝀᛁ\x1b[3mƝ\x1b[23m\x1b[0m", self.code(Role::Title))
+        format!("{}ᛊᛕᛁ\x1b[3mȠ\x1b[23m\x1b[0m", self.code(Role::Title))
     }
 
     pub fn mode_role(m: Mode) -> Role {

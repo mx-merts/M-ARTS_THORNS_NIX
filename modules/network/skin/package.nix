@@ -13,7 +13,7 @@
 
 rustPlatform.buildRustPackage {
   pname = "skin";
-  version = "0.0.2";
+  version = "0.0.3";
 
   src = ./source;
   cargoLock.lockFile = ./source/Cargo.lock;
@@ -37,7 +37,7 @@ rustPlatform.buildRustPackage {
   '';
 
   meta = with lib; {
-    description = "SKIN-0.0.2: network membrane for THORNS (SEAL, SEVER, ROT per layer)";
+    description = "SKIN-0.0.3: network membrane for THORNS (SEAL, SEVER, ROT per layer)";
     homepage = "https://github.com/mx-merts/M-ARTS_THORNS_NIX";
     license = licenses.cc-by-nc-sa-40;
     mainProgram = "SKIN";

@@ -134,18 +134,28 @@ pub enum Warp {
 }
 
 pub fn warp() -> Warp {
+    warp_said().0
+}
+
+/// WARP's state and what warp-cli actually said: its status line, or the
+/// error ("no answer in 5s"). The watcher keeps the second part so a wrong
+/// "TUNNEL SEVERED" can be traced (SKIN TUN → WATCHER).
+pub fn warp_said() -> (Warp, String) {
     match sys::run("warp-cli", &["--accept-tos", "status"], 5) {
         Ok(out) => {
-            let first = out.lines().find(|l| l.contains("Status update")).unwrap_or("").to_lowercase();
-            if first.contains("connected") && !first.contains("disconnected") {
+            let line = out.lines().find(|l| l.contains("Status update")).unwrap_or("").trim().to_string();
+            let low = line.to_lowercase();
+            let w = if low.contains("connected") && !low.contains("disconnected") {
                 Warp::Connected
-            } else if first.contains("connecting") {
+            } else if low.contains("connecting") {
                 Warp::Connecting
             } else {
                 Warp::Disconnected
-            }
+            };
+            let said = if line.is_empty() { out.lines().next().unwrap_or("no output").trim().to_string() } else { line };
+            (w, said)
         }
-        Err(_) => Warp::Missing,
+        Err(e) => (Warp::Missing, e),
     }
 }
 

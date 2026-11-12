@@ -1,6 +1,6 @@
 [package]
 name = "skin"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2021"
 authors = ["M-ARTS"]
 description = "SKIN - network membrane for THORNS (seal, sever, rot)"

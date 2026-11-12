@@ -3,6 +3,7 @@
 //!   state    one line per layer: "DNS SEAL 1731420000", plus "timer SEVER <deadline>"
 //!   events   one notification per line, read by the user's notifier
 //!   rules    the nftables ruleset applied last (for SKIN KS / SKIN LAN)
+//!   watch    what warp-cli last told the watcher (SKIN TUN → WATCHER)
 //!
 //! /etc/skin/skin.conf (written by the NixOS module): "known=<SSID>" lines.
 //! /var/lib/skin/known (sudo SKIN TRUST, not in git): one SSID per line.

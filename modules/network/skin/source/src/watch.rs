@@ -109,9 +109,11 @@ fn tick(w: &mut Watch) {
     }
     w.first = false;
 
-    // 4. Tunnel.
+    // 4. Tunnel. What warp-cli said is kept in /run/skin/watch (SKIN TUN).
     if st.mode(Layer::Tun) == Mode::Seal && n.iface.is_some() {
-        if net::warp() == Warp::Connected {
+        let (warp, said) = net::warp_said();
+        let _ = sys::write_atomic(&p(&format!("{}/watch", state::DIR)), &format!("{now}\t{warp:?}\t{said}\n"));
+        if warp == Warp::Connected {
             if w.tun_severed {
                 state::event("TUNNEL SEALED", "WARP back · traffic released", false);
             }
@@ -123,11 +125,11 @@ fn tick(w: &mut Watch) {
             let held = st.mode(Layer::Ks) == Mode::Seal;
             if now - since >= 15 && !w.tun_severed {
                 let body = if held {
-                    "WARP lost · traffic held by KS · without WARP: sudo SKIN SEVER TUN KS"
+                    format!("WARP lost · traffic held by KILLSWITCH · warp-cli: {said} · without WARP: sudo SKIN SEVER TUN KS")
                 } else {
-                    "WARP lost · traffic goes out directly (KS is off)"
+                    format!("WARP lost · traffic goes out directly (KILLSWITCH is off) · warp-cli: {said}")
                 };
-                state::event("TUNNEL SEVERED", body, true);
+                state::event("TUNNEL SEVERED", &body, true);
                 w.tun_severed = true;
             }
             if now - since >= 300 && !w.tun_rotting {

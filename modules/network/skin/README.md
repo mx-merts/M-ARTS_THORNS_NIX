@@ -1,4 +1,4 @@
-# SKIN-0.0.2 — Network Membrane
+# SKIN-0.0.3 — Network Membrane
 
 > THORNS'un derisi: dış dünyayla aradaki zar. Ağ güvenliğinin bütün katmanlarını tek komutla sıkar ya da gevşetir. SPINE güvenliği izler, NERV donanımı; SKIN ağı.
 
@@ -88,7 +88,7 @@ Kendi kanalı var (SPINE ve NERV'den bağımsız). Gönderdikleri:
 
 - `SEALED ── 5 of 5 layers` · `SEVERED ── <ağ>` · `ROTTEN ── <ağ>` — bütün deri değişince
 - `KILLSWITCH ROTTED`, `DNS TUNNEL SEVERED` — tek katman değişince
-- `TUNNEL SEVERED` — WARP 15 sn'dir yok (ekranda kalır); `TUNNEL ROTTING` — 5 dk'dır yok; `TUNNEL SEALED` — geri geldi
+- `TUNNEL SEVERED` — WARP 15 sn'dir yok (ekranda kalır); `TUNNEL ROTTING` — 5 dk'dır yok; `TUNNEL SEALED` — geri geldi. Bildirimde warp-cli'nin ne dediği de yazar; bekçinin WARP hakkında son gördüğü: `SKIN TUN` → WATCHER
 - `DNS SEVERED` / `DNS SEALED` — şifreli DNS cevap vermiyor / yine veriyor
 - `KILLSWITCH SEVERED` / `KILLSWITCH SEALED` — kurallar yüklenemedi / yine yüklendi
 - `SEVER EXPIRED ── SEALED` — zamanlayıcı doldu, deri kendiliğinden kapandı
@@ -121,7 +121,7 @@ Proton bağlıyken bekçi WARP yok diye uyarmaz (TUN zaten SEVER).
 
 ## Başlık
 
-Kitty'de başlık **ΣꝀᛁƝ** olarak çizilir: Σ (Yunan), Ꝁ (çizgili K), ᛁ (rün I), Ɲ (kancalı N, italik). NERV'deki ƝΞᚱꝞ gibi dördü de **Junicode**'dan gelir (`terminal.nix`). TTY'de ve boru (`|`) çıktısında düz `SKIN` yazılır.
+Kitty'de başlık **ᛊᛕᛁȠ** olarak çizilir: ᛊ (rün sowilo), ᛕ (rün, K yerine), ᛁ (rün isaz), Ƞ (uzun bacaklı N, italik). NERV'deki ƝΞᚱꝞ gibi dördü de **Junicode**'dan gelir (`terminal.nix`). TTY'de ve boru (`|`) çıktısında düz `SKIN` yazılır.
 
 ## Dosyalar
 

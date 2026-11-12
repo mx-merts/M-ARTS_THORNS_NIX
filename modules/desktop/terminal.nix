@@ -74,9 +74,9 @@
     color7  #bac2de
     color15 #a6adc8
 
-    # NERV (ƝΞᚱꝞ) ve SKIN (ΣꝀᛁƝ) basliklari: bu harfler Junicode'dan
-    # cizilir, boylari esit olsun
-    symbol_map U+019D,U+039E,U+16B1,U+A75E,U+03A3,U+A740,U+16C1 Junicode
+    # NERV (ƝΞᚱꝞ) ve SKIN (ᛊᛕᛁȠ) basliklari: bu harfler Junicode'dan
+    # cizilir, boylari esit olsun (U+16A0-U+16F8: butun runler)
+    symbol_map U+019D,U+039E,U+A75E,U+0220,U+16A0-U+16F8 Junicode
   '';
 
   # ─── Nerd Fonts ───

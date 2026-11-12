@@ -123,6 +123,7 @@ pub fn layer(pt: &Paint, l: Layer) -> String {
         Layer::Tun => {
             rows.push(("PROVIDER", "Cloudflare WARP · tunnel_only · MASQUE".into()));
             rows.push(("STATUS", format!("{:?}", lv.warp).to_lowercase()));
+            rows.push(("WATCHER", watcher_saw()));
             rows.push(("SEAL", "WARP up, everything through it".into()));
             rows.push(("SEVER / ROT", "WARP withdrawn (login pages, networks that block it)".into()));
         }
@@ -180,4 +181,14 @@ pub fn help(pt: &Paint) -> String {
     out.push(d(" Modes end at reboot, TRUST stays. Incoming connections are never opened."));
     out.push(d(" Login page (cafe, hotel): sudo SKIN SEVER → log in → sudo SKIN SEAL"));
     out.join("\n")
+}
+
+/// The tunnel as skin-watch last saw it: "connected · 2s ago · Status update: Connected".
+fn watcher_saw() -> String {
+    let text = sys::read(&sys::p(&format!("{}/watch", state::DIR))).unwrap_or_default();
+    let f: Vec<&str> = text.splitn(3, '\t').collect();
+    match (f.first().and_then(|t| t.parse::<u64>().ok()), f.get(1), f.get(2)) {
+        (Some(t), Some(w), Some(said)) => format!("{} · {}s ago · {said}", w.to_lowercase(), sys::now().saturating_sub(t)),
+        _ => "not checked (TUNNEL not sealed or no network)".into(),
+    }
 }
