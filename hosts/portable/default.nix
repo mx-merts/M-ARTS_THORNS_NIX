@@ -90,13 +90,23 @@ in
   security.sudo-rs.enable = true;
   security.sudo-rs.wheelNeedsPassword = true;
 
-  specialisation."PRIME".configuration = { config, lib, ... }: {
-    boot.loader.grub.configurationName = lib.mkForce ("NIXOS-PRIME-" + labelVersion);
-    imports = [ ../../modules/hardware/gpu/nvidia-laptop.nix ];
+  # GRUB girdileri (DESK = ana yapilandirma, specialisation degil):
+  #   DESK      Intel / AMD / NVIDIA'siz her makine (NVIDIA varsa nouveau ile acilir)
+  #   NVIDIA    RTX 20 / GTX 16 ve sonrasi (RTX 50 dahil), masaustu + laptop
+  #   NVIDIA-L  GTX 900 / 1000 (2014-2017), masaustu + laptop
+  #   PRIME     sadece bu laptop (busId sabit)
+  specialisation."NVIDIA".configuration = { config, lib, ... }: {
+    boot.loader.grub.configurationName = lib.mkForce ("NIXOS-NVIDIA-" + labelVersion);
+    imports = [ ../../modules/hardware/gpu/nvidia.nix ];
   };
 
-  specialisation."NVIDIA-DESKTOP".configuration = { config, lib, ... }: {
-    boot.loader.grub.configurationName = lib.mkForce ("NIXOS-NVIDIA-DESKTOP-" + labelVersion);
-    imports = [ ../../modules/hardware/gpu/nvidia-desktop.nix ];
+  specialisation."NVIDIA-L".configuration = { config, lib, ... }: {
+    boot.loader.grub.configurationName = lib.mkForce ("NIXOS-NVIDIA-L-" + labelVersion);
+    imports = [ ../../modules/hardware/gpu/nvidia-legacy.nix ];
+  };
+
+  specialisation."PRIME".configuration = { config, lib, ... }: {
+    boot.loader.grub.configurationName = lib.mkForce ("NIXOS-PRIME-" + labelVersion);
+    imports = [ ../../modules/hardware/gpu/prime.nix ];
   };
 }

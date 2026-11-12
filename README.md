@@ -17,7 +17,7 @@ Flake tabanlı, modüler ve deklaratif bir NixOS yapılandırması. **Taşınabi
 | Flatpak uygulaması ve sandbox izinleri | `modules/services/flatpak.nix` |
 | Yeni arka plan servisi | `modules/services/` altına yeni dosya |
 | Donanım sorunu (Wi-Fi, ses, GPU) | `modules/hardware/` altında ilgili dosya |
-| NVIDIA ayarı (PRIME / masaüstü) | `modules/hardware/gpu/` |
+| NVIDIA ayarı (NVIDIA / NVIDIA-L / PRIME) | `modules/hardware/gpu/` |
 | Bluetooth ayarı | `modules/hardware/bluetooth.nix` |
 | USB / kamera / otomatik bağlama | `modules/hardware/peripherals.nix` |
 | Casper Excalibur (fan, klavye RGB) | `modules/hardware/excalibur-wmi.nix`, `excalibur-rgb.nix` |
@@ -48,9 +48,9 @@ Flake tabanlı, modüler ve deklaratif bir NixOS yapılandırması. **Taşınabi
 | `modules/core/` | Sistemin iskeleti (`boot`, `nix-settings`, `locale`, `networking`, `auto-upgrade`) |
 | `modules/network/` | DNS (`dnscrypt-proxy`), Proton VPN, Cloudflare WARP, gizlilik ve TCP ayarları |
 | `modules/hardware/` | Fiziksel donanım (ses, Bluetooth, çevre birimleri, sensörler, Excalibur sürücüsü) |
-| `modules/hardware/gpu/` | GPU'ya özel ayarlar (PRIME `busId` gibi) |
+| `modules/hardware/gpu/` | NVIDIA girdileri: ortak ayarlar (`nvidia-common`), yeni kartlar (`nvidia`), eski kartlar (`nvidia-legacy`), bu laptop (`prime`) |
 | `modules/security/` | Güvenlik katmanları (aşağıdaki "Güvenlik" bölümüne bakın) |
-| `modules/desktop/` | Masaüstü (KDE, Hyprland + Serpantinum), SDDM teması, terminal |
+| `modules/desktop/` | Masaüstü (KDE, Hyprland + Serpantinum), SDDM (Wayland) ve teması, terminal |
 | `modules/services/` | Arka plan servisleri (yazıcı, Flatpak) |
 | `modules/programs/` | Amaca göre ayrılmış kullanıcı paketleri (`base`, `shell`, `cli-tools`, `neovim`, `jrun`, `lrun`, `cscan`) |
 | `modules/apps/` | Geliştirme, oyun, ofis, tasarım ve günlük kullanım uygulamaları |
@@ -116,9 +116,20 @@ sudo CSCAN -HOME               # /home'u elle tara
 
 Specialisation'lar, NixOS'un `specialisation` özelliğiyle oluşturulan alternatif sistem sürümleridir. Önyükleme menüsünden (GRUB) seçilirler.
 
-- **DESK:** Varsayılan seçenektir; ana yapılandırmanın kendisidir, specialisation değildir. NVIDIA ekran kartı olmayan her makinede güvenle çalışır; Intel/AMD tümleşik ekran kartını (iGPU) kullanır (nouveau/modesetting).
-- **PRIME:** Yalnızca bu dizüstü bilgisayar içindir (RTX 4050 Max-Q + Raptor Lake-P). Varsayılan olarak Intel iGPU kullanılır; NVIDIA ekran kartı offload yöntemiyle devreye girer. `busId` sabit olduğu için bu sürüm makineye kilitlidir. `hardware.nvidia.open = true` (Ada Lovelace; Turing ve sonrası). Flatpak oyunlarının Vulkan'ı çalışabilsin diye `nvidia_uvm` modülü açılışta yüklenir.
-- **NVIDIA-DESKTOP:** Tek NVIDIA ekran kartlı masaüstü senaryosu içindir. `busId` sabitlenmez, yani makineden bağımsızdır. `hardware.nvidia.open = false` olarak ayarlanmıştır ve geniş uyumluluk için Maxwell'den Ada'ya kadar tüm nesillerde çalışacak şekilde hazırlanmıştır. **Gerçek bir NVIDIA masaüstü donanımında henüz test edilmedi.**
+Amaç, sistemin takıldığı her makineye uyum sağlaması. Linux çekirdeği donanımın büyük kısmını kendisi tanır; tek seçilmesi gereken şey ekran kartı sürücüsüdür, çünkü NVIDIA'nın kapalı sürücüsü açık kaynak sürücüyle aynı anda çalışamaz ve kart nesline göre farklı sürücü ister. Bu yüzden GRUB'da dört girdi var; hepsi hem masaüstü hem laptop için:
+
+| Girdi | Ne zaman seçilir | Sürücü |
+| --- | --- | --- |
+| **DESK** | Intel / AMD ekran kartlı ve NVIDIA'sız her makine. NVIDIA'lı makinede de açılır (açık kaynak nouveau ile, düşük performans) | Çekirdek içi |
+| **NVIDIA** | RTX 20 / GTX 16 (Turing, 2018) ve sonrası, RTX 50 dahil | 595, açık modül |
+| **NVIDIA-L** | GTX 900 / GTX 1000 (Maxwell 2014, Pascal 2016) ve Volta | 580 (LTSB, Ağustos 2028'e kadar), kapalı modül |
+| **PRIME** | Yalnızca bu laptop (RTX 4050 Max-Q + Raptor Lake-P): NVIDIA girdisi + bu makinenin `busId`'leri | 595, açık modül |
+
+- **DESK** ana yapılandırmanın kendisidir, specialisation değildir.
+- **RTX 50 serisi NVIDIA-L ile çalışmaz** (Blackwell yalnızca açık modülle çalışır); GTX 900/1000 de NVIDIA ile çalışmaz (açık modülü desteklemez).
+- **Laptoplarda** (NVIDIA ve NVIDIA-L): ekranı iGPU sürer, NVIDIA kartı boştayken uyur. Bir programı NVIDIA'da çalıştırmak için `nvidia-offload <program>`; Steam'de oyunun başlatma seçeneği `nvidia-offload %command%`.
+- **Giriş ekranı (SDDM) Wayland'de** çalışır (KWin); ekran kartı düzenine kendisi uyum sağlar.
+- Açık modülde `nvidia_uvm` (Flatpak oyunlarının Vulkan'ı için) NixOS'un NVIDIA modülü tarafından açılışta yüklenir.
 
 > **Uyarı:** `nixos-rebuild switch --specialisation ...` **kullanmayın.** Bu komut GRUB'u specialisation'ın kendi yapılandırmasından kurar ve menüdeki diğer girdileri siler. `rebuild.sh` bunun yerine GRUB'u her zaman ana yapılandırmadan kurar (`boot`), seçilen specialisation'ı ise çalışan oturuma `test` ile uygular.
 
@@ -154,7 +165,7 @@ sudo nix eval --impure --raw /etc/nixos#nixosConfigurations.portable.pkgs.proton
 1. **Git hazırlığı:** Tüm değişiklikler (yeni dosyalar dahil) `git add -A` ile eklenir. Flake'ler yalnızca git'in bildiği dosyaları görür; bu sayede yeni bir modül dosyası eklediğinizde `path does not exist` hatası almazsınız. Git durumu gösterilir ve onay istenir. Ardından rebuild kilidi alınır (haftalık otomatik güncellemeyle çakışmasın diye) ve AIDE `/boot`'u kontrol eder.
 2. **Güncelleme (isteğe bağlı):** `y` derseniz bütün flake girdileri (`nix flake update`) ve Flatpak uygulamaları güncellenir. Enter'a basarsanız mevcut sürümlerle devam edilir. Güncelleme kurulmazsa (derleme başarısız olursa, işlemi iptal ederseniz ya da Ctrl+C'ye basarsanız) `flake.lock` kendiliğinden eski haline döner; bozuk bir güncelleme repoda kalmaz.
 3. **Dry rebuild (`dry-activate`):** Yapılandırma tamamen derlenir ve bir değişiklik raporu verilir, ancak **hiçbir şey uygulanmaz**. Bu aşama başarısız olursa rebuild yapılmaz ve `push` atlanır.
-4. **Rebuild:** Bir hedef menüsü çıkar: DESK, NVIDIA-DESKTOP, PRIME (Enter = şu an açık olan) ya da "sadece GRUB" (bir sonraki açılışta uygulanır). GRUB her zaman ana yapılandırmadan kurulur; seçilen hedef çalışan oturuma uygulanır. Ardından AIDE `/boot` için yeni bir referans kaydı alır.
+4. **Rebuild:** Bir hedef menüsü çıkar: DESK, NVIDIA, NVIDIA-L, PRIME (Enter = şu an açık olan) ya da "sadece GRUB" (bir sonraki açılışta uygulanır). GRUB her zaman ana yapılandırmadan kurulur; seçilen hedef çalışan oturuma uygulanır. Ardından AIDE `/boot` için yeni bir referans kaydı alır.
 5. **Push:** Onay verilirse değişiklikler GitHub'a gönderilir.
 6. **Özet:** Her adımın sonucu bir tabloda gösterilir.
 
@@ -180,7 +191,7 @@ sudo nix eval --impure --raw /etc/nixos#nixosConfigurations.portable.pkgs.proton
 ## Bilinen tuzaklar ve çözümleri
 
 - **LKRG ve modül yükleme yarışı:** LKRG, `systemd-modules-load` ile aynı anda yüklenince o anda yüklenmekte olan diğer modüller (`nvidia_uvm`, `kvm_intel`) `Interrupted system call` hatasıyla düşüyordu. Bu yüzden LKRG ayrı bir servisle (`lkrg-load`) diğer modüllerden **sonra** yüklenir.
-- **Flatpak oyunları NVIDIA'da açılmıyor (`vr -3`):** `nvidia_uvm` yüklü değilse Vulkan aygıtı oluşturulamaz. Flatpak bu modülü kendisi yükleyemediği için modül açılışta yüklenir (`nvidia-laptop.nix`).
+- **Flatpak oyunları NVIDIA'da açılmıyor (`vr -3`):** `nvidia_uvm` yüklü değilse Vulkan aygıtı oluşturulamaz. Flatpak bu modülü kendisi yükleyemediği için modül açılışta yüklenir (açık modülde NixOS'un NVIDIA modülü bunu kendisi yapar; kapalı modülde `nvidia` yüklenince otomatik gelir).
 - **Flatpak'te HTTPS indirmeleri takılıyor:** `SSL_CERT_FILE` değişkeni `/run/nocer-ca-bundle.crt` dosyasını gösteriyor, ama `/run` Flatpak'in içinden görünmüyor. Bu yüzden dosya oyun başlatıcılarına salt okunur olarak açılır (`flatpak.nix`).
 - **Flatpak izinleri ancak uygulama yeniden başlayınca geçerli olur:** önce `flatpak kill <uygulama>`. Kullanıcı seviyesindeki geçici izinleri temizlemek için `flatpak override --user --reset <uygulama>`.
 

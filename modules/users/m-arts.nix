@@ -3,6 +3,7 @@
   users.users."m-arts" = {
     isNormalUser = true;
     description = "M-ARTS";
-    extraGroups = [ "networkmanager" "wheel" ];
+    # scanner + lp: tarayici erisimi (hardware/peripherals.nix)
+    extraGroups = [ "networkmanager" "wheel" "scanner" "lp" ];
   };
 }

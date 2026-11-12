@@ -8,6 +8,7 @@ return {
         html = { mason = false },
         cssls = { mason = false },
         jsonls = { mason = false },
+        nil_ls = { mason = false },  -- Nix dosyalari: nil Nix ile kurulu (neovim.nix)
       },
     },
   },
