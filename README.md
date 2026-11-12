@@ -17,7 +17,8 @@ Flake tabanlı, modüler ve deklaratif bir NixOS yapılandırması. **Taşınabi
 | Flatpak uygulaması ve sandbox izinleri | `modules/services/flatpak.nix` |
 | Yeni arka plan servisi | `modules/services/` altına yeni dosya |
 | Donanım sorunu (Wi-Fi, ses, GPU) | `modules/hardware/` altında ilgili dosya |
-| NVIDIA ayarı (NVIDIA / NVIDIA-L / PRIME) | `modules/hardware/gpu/` |
+| NVIDIA ayarı (NVIDIA / NVIDIA-L / PRIME) | `modules/hardware/gpu/` (PRIME adresleri: `prime-bus.nix`) |
+| Donanım tarayıcı ve parça yönetimi | `modules/hardware/nerv/` (NERV) |
 | Bluetooth ayarı | `modules/hardware/bluetooth.nix` |
 | USB / kamera / otomatik bağlama | `modules/hardware/peripherals.nix` |
 | Casper Excalibur (fan, klavye RGB) | `modules/hardware/excalibur-wmi.nix`, `excalibur-rgb.nix` |
@@ -47,7 +48,7 @@ Flake tabanlı, modüler ve deklaratif bir NixOS yapılandırması. **Taşınabi
 | `hosts/portable/` | Bu makinenin profili ve donanım taraması |
 | `modules/core/` | Sistemin iskeleti (`boot`, `nix-settings`, `locale`, `networking`, `auto-upgrade`) |
 | `modules/network/` | DNS (`dnscrypt-proxy`), Proton VPN, Cloudflare WARP, gizlilik ve TCP ayarları |
-| `modules/hardware/` | Fiziksel donanım (ses, Bluetooth, çevre birimleri, sensörler, Excalibur sürücüsü) |
+| `modules/hardware/` | Fiziksel donanım (ses, Bluetooth, çevre birimleri, sensörler, Excalibur sürücüsü, NERV) |
 | `modules/hardware/gpu/` | NVIDIA girdileri: ortak ayarlar (`nvidia-common`), yeni kartlar (`nvidia`), eski kartlar (`nvidia-legacy`), bu laptop (`prime`) |
 | `modules/security/` | Güvenlik katmanları (aşağıdaki "Güvenlik" bölümüne bakın) |
 | `modules/desktop/` | Masaüstü (KDE, Hyprland + Serpantinum), SDDM (Wayland) ve teması, terminal |
@@ -63,6 +64,7 @@ nixpkgs'ta bulunmayan, bu depo için özel olarak geliştirilmiş modüller:
 
 - **SPINE - güvenlik olay toplayıcı ve bildirim servisi (Rust).** `modules/security/spine/` altındadır. LKRG, AIDE, auditd ve ClamAV'dan gelen olayları toplar ve masaüstü bildirimine çevirir. Hiçbir şeyi engellemez, sadece haber verir. `warn` ve `crit` seviyesindeki bildirimler sen kapatana kadar ekranda kalır.
 - **NOCER - NixOS sertifika yöneticisi (Rust).** `modules/security/nocer/` altındadır. Okul (MEB) gibi kurumların ağ sertifikalarını rebuild yapmadan açıp kapatır; Firefox politikalarını da buna göre günceller. Ayrıntılar için [kendi README dosyasına](modules/security/nocer/README.md) bakın.
+- **NERV - donanım sinir sistemi (Rust).** `modules/hardware/nerv/` altındadır. Açılışta bütün donanımı tarar, sürücüsü eksik parçaları bağlar; girişte hangi GRUB girdisinin uygun olduğunu ve bağlanamayan parçaları bildirir. `NERV` komutu bağlı parçaları listeler, `NERV <PARÇA> <N> ENABLE | DISABLE | INFO | RESET` ile parçalar yönetilir. Ayrıntılar için [kendi README dosyasına](modules/hardware/nerv/README.md) bakın.
 - **thorns-aide - dosya bütünlüğü denetimi.** `modules/security/aide/` altındadır. AIDE'yi sadece `/nix/store` ve git'in kapsamadığı yerlerde çalıştırır: `/boot` ve oturum açılışında çalışan "kalıcılık noktaları".
 - **CSCAN - elle virüs tarama.** `modules/programs/cscan.nix` dosyasındadır. ClamAV ile `/`, `/home`, `/boot` ya da verilen yolu paralel olarak tarar.
 - **JRUN - `.jar` çalıştırıcı.** `modules/programs/jrun.nix` dosyasındadır. Java `.jar` dosyalarını sorunsuz çalıştırmak için geliştirilmiştir.
@@ -125,6 +127,7 @@ Amaç, sistemin takıldığı her makineye uyum sağlaması. Linux çekirdeği d
 | **NVIDIA-L** | GTX 900 / GTX 1000 (Maxwell 2014, Pascal 2016) ve Volta | 580 (LTSB, Ağustos 2028'e kadar), kapalı modül |
 | **PRIME** | Yalnızca bu laptop (RTX 4050 Max-Q + Raptor Lake-P): NVIDIA girdisi + bu makinenin `busId`'leri | 595, açık modül |
 
+- **Hangisini seçeceğini bilmiyorsan** DESK ile aç: NERV ekran kartına bakıp girişte doğru girdiyi söyler (`NVIDIA PASCAL DETECTED ── NVIDIA-L RECOMMENDED`). Terminalde `NERV GPU` aynı öneriyi gösterir.
 - **DESK** ana yapılandırmanın kendisidir, specialisation değildir.
 - **RTX 50 serisi NVIDIA-L ile çalışmaz** (Blackwell yalnızca açık modülle çalışır); GTX 900/1000 de NVIDIA ile çalışmaz (açık modülü desteklemez).
 - **Laptoplarda** (NVIDIA ve NVIDIA-L): ekranı iGPU sürer, NVIDIA kartı boştayken uyur. Bir programı NVIDIA'da çalıştırmak için `nvidia-offload <program>`; Steam'de oyunun başlatma seçeneği `nvidia-offload %command%`.

@@ -1,0 +1,20 @@
+[package]
+name = "nerv"
+version = "0.0.1"
+edition = "2021"
+authors = ["M-ARTS"]
+description = "NERV - hardware nervous system for THORNS (scan, report, bind, control)"
+license = "CC-BY-NC-SA-4.0"
+repository = "https://github.com/mx-merts/M-ARTS_THORNS_NIX"
+
+[[bin]]
+name = "NERV"
+path = "src/main.rs"
+
+[dependencies]
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
+panic = "abort"

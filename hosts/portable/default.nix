@@ -29,6 +29,7 @@ in
     ../../modules/hardware/sensors.nix
     ../../modules/hardware/excalibur-wmi.nix
     ../../modules/hardware/excalibur-rgb.nix
+    ../../modules/hardware/nerv
 
     ../../modules/security/firewall.nix
     ../../modules/security/hardening.nix
@@ -77,6 +78,7 @@ in
 
   programs.nocer.enable = true;
   programs.spine.enable = true;
+  programs.nerv.enable = true;
 
   hardware.excaliburRgb = {
     enable = true;
