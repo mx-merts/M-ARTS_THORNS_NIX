@@ -35,7 +35,7 @@ pub fn target_word(l: Layer, m: Mode, net: &Net) -> &'static str {
         (Layer::Lan, Mode::Seal) => "isolated",
         (Layer::Lan, Mode::Sever) => "gateway only",
         (Layer::Lan, Mode::Rot) => "open",
-        (Layer::Id, Mode::Seal) => "random MAC",
+        (Layer::Id, Mode::Seal) => "masked MAC",
         (Layer::Id, Mode::Sever) => "unchanged",
         (Layer::Id, Mode::Rot) => "real MAC",
     }
@@ -147,7 +147,7 @@ pub fn transition(layers: &[Layer], mode: Mode, st: &mut State, paint: Option<&P
             }
         };
         if let Some(pt) = paint {
-            println!("{}", pt.step(l.short(), target_word(l, mode, &net), &r));
+            println!("{}", pt.step(l.name(), target_word(l, mode, &net), &r));
         }
         out.push((l, r));
     }
@@ -156,12 +156,12 @@ pub fn transition(layers: &[Layer], mode: Mode, st: &mut State, paint: Option<&P
     out
 }
 
-/// "DNS ✓  TUN ✓  KS ✓  LAN ✓  ID ✗"
+/// "DNS ✓  TUNNEL ✓  KILLSWITCH ✓  LAN ✓  IDENTITY ✗"
 pub fn summary(outcomes: &[Outcome]) -> String {
     Layer::ALL
         .iter()
         .filter_map(|l| outcomes.iter().find(|(x, _)| x == l))
-        .map(|(l, r)| format!("{} {}", l.short(), if r.is_ok() { "✓" } else { "✗" }))
+        .map(|(l, r)| format!("{} {}", l.name(), if r.is_ok() { "✓" } else { "✗" }))
         .collect::<Vec<_>>()
         .join("  ")
 }
@@ -183,7 +183,7 @@ pub fn event_for(layers: &[Layer], mode: Mode, outcomes: &[Outcome], whole: bool
         }
         state::event(&title, &body, mode != Mode::Seal || !failed.is_empty());
     } else {
-        let names: Vec<&str> = layers.iter().map(|l| l.short()).collect();
+        let names: Vec<&str> = layers.iter().map(|l| l.name()).collect();
         state::event(&format!("{} {}", names.join(" "), mode.done_word()), &summary(outcomes), mode == Mode::Rot);
     }
     // A layer that would not seal is cut: "TUNNEL SEVERED".

@@ -7,7 +7,7 @@ use crate::paint::{Paint, Role, VERSION};
 use crate::state::{self, State};
 use crate::sys;
 
-const RULE: usize = 62;
+const RULE: usize = 69;
 
 /// Everything the status screen needs, read once.
 pub struct Live {
@@ -47,7 +47,7 @@ fn describe(l: Layer, lv: &Live) -> (bool, String, String) {
         (Layer::Lan, Mode::Rot) => (true, "open".into(), "every local device reachable".into()),
         (Layer::Id, Mode::Rot) => (real_mac, if real_mac { "real MAC".into() } else { "real MAC pending".into() }, "hostname sent".into()),
         (Layer::Id, _) if real_mac => (m != Mode::Seal, "REAL MAC".into(), "sudo SKIN SEAL ID".into()),
-        (Layer::Id, _) => (true, "masked".into(), "random MAC · no hostname".into()),
+        (Layer::Id, _) => (true, "masked".into(), "MAC per network and boot · no hostname".into()),
     }
 }
 
@@ -94,7 +94,7 @@ pub fn status(pt: &Paint) -> String {
         let mark = pt.c(role, &format!("{sym} {:<5}", m.name()));
         let what = if ok { pad(&what, 26) } else { pt.c(Role::Bad, &pad(&what, 26)) };
         let since = if m != Mode::Seal { format!(" · {}", since_text(lv.st.since[l.index()])) } else { String::new() };
-        out.push(format!("   {}   {}   {} {}", pt.c(Role::Strong, &pad(l.short(), 3)), mark, what, pt.c(Role::Dim, &format!("{detail}{since}"))));
+        out.push(format!("   {}   {}   {} {}", pt.c(Role::Strong, &pad(l.name(), 10)), mark, what, pt.c(Role::Dim, &format!("{detail}{since}"))));
     }
     out.push(String::new());
     out.push(format!(
@@ -144,14 +144,14 @@ pub fn layer(pt: &Paint, l: Layer) -> String {
         }
         Layer::Id => {
             rows.push(("MAC NOW", lv.mac.0.clone().unwrap_or_else(|| "?".into())));
-            rows.push(("SEAL", "random MAC on every connection, no hostname".into()));
+            rows.push(("SEAL", "MAC new on every network and every boot, no hostname".into()));
             rows.push(("SEVER", "unchanged (the login page remembers this MAC)".into()));
             rows.push(("ROT", "real MAC + hostname (networks that register MACs)".into()));
             rows.push(("NOTE", "changing it reconnects the network".into()));
         }
     }
     rows.push(("CHANGE", format!("sudo SKIN SEAL {0} · sudo SKIN SEVER {0} · sudo SKIN ROT {0}", l.short())));
-    let mut out = vec![format!(" {}   {}", pt.c(Role::Strong, &format!("▌{} [{}]", l.name(), l.short())), pt.c(role, &format!("{sym} {}", m.name())))];
+    let mut out = vec![format!(" {}   {}", pt.c(Role::Strong, &format!("▌{}", l.name())), pt.c(role, &format!("{sym} {}", m.name())))];
     for (k, v) in rows {
         if !v.is_empty() {
             out.push(format!("   {}  {v}", pt.c(Role::Dim, &pad(k, 12))));

@@ -92,10 +92,11 @@ impl Paint {
         }
     }
 
-    /// "   DNS   → encrypted ............ OK"
+    /// "   KILLSWITCH → armed ............ OK" (full layer names on screen;
+    /// the short ones are only for typing commands)
     pub fn step(&self, layer: &str, what: &str, r: &Result<String, String>) -> String {
-        let label = format!("{layer:<5} → {what}");
-        let dots = ".".repeat(28usize.saturating_sub(label.chars().count()).max(3));
+        let label = format!("{layer:<10} → {what}");
+        let dots = ".".repeat(33usize.saturating_sub(label.chars().count()).max(3));
         match r {
             Ok(note) if note.is_empty() => format!("   {label} {} {}", self.c(Role::Dim, &dots), self.c(Role::Good, "OK")),
             Ok(note) => format!("   {label} {} {}   {}", self.c(Role::Dim, &dots), self.c(Role::Good, "OK"), self.c(Role::Dim, note)),

@@ -34,7 +34,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    environment.systemPackages = [ skin ];
+    # nftables: acil cikis icin "sudo nft delete table inet skin" (README)
+    environment.systemPackages = [ skin pkgs.nftables ];
 
     environment.etc."skin/skin.conf".text =
       lib.concatMapStrings (ssid: "known=${ssid}\n") cfg.knownNetworks;

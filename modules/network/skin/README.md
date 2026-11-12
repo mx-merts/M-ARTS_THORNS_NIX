@@ -1,4 +1,4 @@
-# SKIN-0.0.1 — Network Membrane
+# SKIN-0.0.2 — Network Membrane
 
 > THORNS'un derisi: dış dünyayla aradaki zar. Ağ güvenliğinin bütün katmanlarını tek komutla sıkar ya da gevşetir. SPINE güvenliği izler, NERV donanımı; SKIN ağı.
 
@@ -38,7 +38,7 @@ sudo SKIN DISTRUST         # artık değil
 SKIN HELP
 ```
 
-Komut yapısı: **`SKIN <DURUM> [KATMAN..]`**. Katman verilmezse bütün deri değişir (zamanlayıcılı); verilirse sadece o katmanlar (zamanlayıcısız, sen geri alana kadar kalır). Uzun/kısa ad, büyük/küçük harf fark etmez. Okumak herkese açık; değiştirmek `sudo` ister.
+Komut yapısı: **`SKIN <DURUM> [KATMAN..]`**. Katman verilmezse bütün deri değişir (zamanlayıcılı); verilirse sadece o katmanlar (zamanlayıcısız, sen geri alana kadar kalır). Uzun/kısa ad, büyük/küçük harf fark etmez; kısa adlar (`TUN`, `KS`, `ID`) sadece komut yazarken kullanılır, ekranda ve bildirimlerde hep tam ad görünür. Okumak herkese açık; değiştirmek `sudo` ister.
 
 ## Katmanlar
 
@@ -87,7 +87,7 @@ Liste `/var/lib/skin/known`'da, **sadece bu makinede** tutulur. Bilinçli olarak
 Kendi kanalı var (SPINE ve NERV'den bağımsız). Gönderdikleri:
 
 - `SEALED ── 5 of 5 layers` · `SEVERED ── <ağ>` · `ROTTEN ── <ağ>` — bütün deri değişince
-- `KS ROTTED`, `DNS TUN SEVERED` — tek katman değişince
+- `KILLSWITCH ROTTED`, `DNS TUNNEL SEVERED` — tek katman değişince
 - `TUNNEL SEVERED` — WARP 15 sn'dir yok (ekranda kalır); `TUNNEL ROTTING` — 5 dk'dır yok; `TUNNEL SEALED` — geri geldi
 - `DNS SEVERED` / `DNS SEALED` — şifreli DNS cevap vermiyor / yine veriyor
 - `KILLSWITCH SEVERED` / `KILLSWITCH SEALED` — kurallar yüklenemedi / yine yüklendi

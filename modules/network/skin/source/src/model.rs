@@ -72,7 +72,7 @@ impl Mode {
         }
     }
 
-    /// "KS ROTTED", "DNS SEALED" (one layer).
+    /// "KILLSWITCH ROTTED", "DNS SEALED" (one layer).
     pub fn done_word(self) -> &'static str {
         match self {
             Mode::Seal => "SEALED",

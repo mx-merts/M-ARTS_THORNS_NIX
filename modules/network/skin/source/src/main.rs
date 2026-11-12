@@ -45,9 +45,11 @@ fn act(pt: &Paint, mode: Mode, asked: Vec<Layer>) -> i32 {
     // Naming all five layers is the same as naming none.
     let whole = asked.is_empty() || asked.len() == Layer::ALL.len();
     let targets: Vec<Layer> = if whole { Layer::ALL.to_vec() } else { asked };
-    let names: Vec<&str> = targets.iter().map(|l| l.short()).collect();
+    // Full names on screen; short ones only in the command to type.
+    let names: Vec<&str> = targets.iter().map(|l| l.name()).collect();
+    let shorts: Vec<&str> = targets.iter().map(|l| l.short()).collect();
     if !sys::is_root() {
-        let cmd = if whole { mode.name().to_string() } else { format!("{} {}", mode.name(), names.join(" ")) };
+        let cmd = if whole { mode.name().to_string() } else { format!("{} {}", mode.name(), shorts.join(" ")) };
         println!("{}   {}", refused(pt, "PERMISSION DENIED"), pt.c(Role::Dim, &format!("── run: sudo SKIN {cmd}")));
         return 1;
     }
