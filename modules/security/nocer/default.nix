@@ -115,12 +115,30 @@ in
       };
     };
 
+    # Calisma aninda (sertifika ac/kapa): nocer ve asagidaki .path birimi
+    # bunu baslatir. RemainAfterExit YOK: aktif kalsaydi .path birimi onu
+    # bir daha baslatamazdi.
     systemd.services.nocer-rebuild = {
       description = "Rebuild NOCER CA bundle";
-      wantedBy = [ "multi-user.target" ];
-      before = [ "multi-user.target" ];
       serviceConfig = {
         Type = "oneshot";
+        ExecStart = "${rebuildBundle}/bin/nocer-rebuild-bundle";
+      };
+    };
+
+    # Acilista ve sistemin CA listesi degisince (nixpkgs guncellemesi):
+    # bundle /etc/ssl/certs/ca-certificates.crt'nin bir kopyasini iceriyor;
+    # eskiden yeni kok sertifikalar ancak yeniden baslatinca geliyordu.
+    # switch sadece AKTIF birimleri yeniden baslatir, bu yuzden
+    # RemainAfterExit + restartTriggers ayri bir birimde.
+    systemd.services.nocer-bundle-sync = {
+      description = "Rebuild NOCER CA bundle (boot / system CA change)";
+      wantedBy = [ "multi-user.target" ];
+      before = [ "multi-user.target" ];
+      restartTriggers = [ config.environment.etc."ssl/certs/ca-certificates.crt".source ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
         ExecStart = "${rebuildBundle}/bin/nocer-rebuild-bundle";
       };
     };

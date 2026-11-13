@@ -13,7 +13,25 @@
     efiSupport = true;
     efiInstallAsRemovable = true;
     device = "nodev";   # BIOS/MBR kurulumu YOK, sadece UEFI
-    useOSProber = true;   # ← DEĞİŞTİ: Windows/diğer OS'ları GRUB'da göster
+    # os-prober KAPALI: rebuild hangi makinede yapilirsa o makinenin
+    # disklerini tarayip (okuldaki Windows dahil) girdilerini bu SSD'nin
+    # GRUB'ina yaziyordu. Baska bir sistemi acmak icin: firmware'in boot
+    # menusu (genelde F12 / F8 / Esc). Windows icin asagidaki WINDOWS girdisi.
+    useOSProber = false;
+    # WINDOWS: os-prober'in yerine. Rebuild sirasinda degil, HER ACILISTA
+    # o anki makinede Windows'un EFI dosyasi aranir; bulunursa girdi
+    # gorunur, bulunmazsa (Windows'suz makine) menude hic yer almaz.
+    extraEntries = ''
+      insmod part_gpt
+      insmod fat
+      if search --no-floppy --file --set=thorns_win /EFI/Microsoft/Boot/bootmgfw.efi; then
+        menuentry "WINDOWS" --class windows {
+          insmod chain
+          search --no-floppy --file --set=root /EFI/Microsoft/Boot/bootmgfw.efi
+          chainloader /EFI/Microsoft/Boot/bootmgfw.efi
+        }
+      fi
+    '';
     configurationLimit = 10;
   };
 

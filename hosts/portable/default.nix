@@ -1,16 +1,10 @@
 { config, lib, pkgs, ... }:
-let
-  # GRUB etiketi: rebuild.sh "T-<sayi>", thorns-upgrade "AUTO-<tarih>" verir
-  # (NIXOS_LABEL_VERSION + --impure). Elle rebuild edilirse "dev" gorunur.
-  labelVersion =
-    let v = builtins.getEnv "NIXOS_LABEL_VERSION";
-    in if v == "" then ":-:-:dev:-:-:" else v;
-in
 {
   imports = [
     ./hardware-configuration.nix
 
     ../../modules/core/boot.nix
+    ../../modules/core/boot-menu.nix
     ../../modules/core/nix-settings.nix
     ../../modules/core/locale.nix
     ../../modules/core/networking.nix
@@ -47,6 +41,7 @@ in
     ../../modules/desktop/hyprland.nix
     ../../modules/desktop/serpantinum.nix
     ../../modules/desktop/sddm-theme.nix
+    ../../modules/desktop/grub-theme.nix
     ../../modules/desktop/terminal.nix
 
     ../../modules/services/printing.nix
@@ -73,7 +68,8 @@ in
 
   system.stateVersion = "26.05";
 
-  system.nixos.label = "NIXOS-DESK-" + labelVersion;
+  # Surum etiketi: modules/core/boot-menu.nix (GRUB'daki adlar da orada)
+  system.nixos.label = "NIXOS-DESK-" + config.thorns.bootMenu.label;
 
   environment.sessionVariables.NIXOS_OZONE_WL = "1";
 
@@ -100,18 +96,19 @@ in
   #   NVIDIA    RTX 20 / GTX 16 ve sonrasi (RTX 50 dahil), masaustu + laptop
   #   NVIDIA-L  GTX 900 / 1000 (2014-2017), masaustu + laptop
   #   PRIME     sadece bu laptop (busId sabit)
-  specialisation."NVIDIA".configuration = { config, lib, ... }: {
-    boot.loader.grub.configurationName = lib.mkForce ("NIXOS-NVIDIA-" + labelVersion);
+  # GRUB'da "<ad> · T-[113]" olarak gorunur (modules/core/boot-menu.nix).
+  specialisation."NVIDIA".configuration = {
+    thorns.bootMenu.name = "NVIDIA";
     imports = [ ../../modules/hardware/gpu/nvidia.nix ];
   };
 
-  specialisation."NVIDIA-L".configuration = { config, lib, ... }: {
-    boot.loader.grub.configurationName = lib.mkForce ("NIXOS-NVIDIA-L-" + labelVersion);
+  specialisation."NVIDIA-L".configuration = {
+    thorns.bootMenu.name = "NVIDIA-L";
     imports = [ ../../modules/hardware/gpu/nvidia-legacy.nix ];
   };
 
-  specialisation."PRIME".configuration = { config, lib, ... }: {
-    boot.loader.grub.configurationName = lib.mkForce ("NIXOS-PRIME-" + labelVersion);
+  specialisation."PRIME".configuration = {
+    thorns.bootMenu.name = "PRIME";
     imports = [ ../../modules/hardware/gpu/prime.nix ];
   };
 }
