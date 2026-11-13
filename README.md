@@ -25,6 +25,7 @@ Flake tabanlı, modüler ve deklaratif bir NixOS yapılandırması. **Taşınabi
 | DNS / gizlilik ayarı | `modules/network/dns.nix`, `privacy.nix` |
 | VPN (Proton) / Cloudflare WARP | `modules/network/vpn.nix`, `warp.nix` |
 | Ağ zarı: SEAL / SEVER / ROT, kill switch, kafe girişi | `modules/network/skin/` (SKIN) |
+| Bilinen ağ (ev: LAN açık kalır) | `sudo SKIN TRUST` (git'e girmez: `/var/lib/skin/known`) |
 | Güvenlik duvarı / port açma | `modules/security/firewall.nix` |
 | Kernel sertleştirme (sysctl, modül kara listesi) | `modules/security/hardening.nix` |
 | Virüs tarama (ClamAV), yanlış alarm listesi | `modules/security/scanning.nix` |
@@ -85,14 +86,17 @@ nixpkgs'ta bulunmayan, bu depo için özel olarak geliştirilmiş modüller:
 | ClamAV | Downloads, Desktop ve USB'yi anlık tarar. Haftalık `/home` taraması yapar. fangfrisch ile Sanesecurity imzalarını da ekler | `scanning.nix` |
 | Oyun sandbox'ı | Lutris ve Heroic Flatpak'te ev dizinine erişemez; sadece oyun klasörlerini görür (`~/OYUNLAR`, `~/GAMES`). Bir oyun ya da hileyle gelen token çalıcı Discord, Firefox ve `~/.ssh` dosyalarını göremez | `flatpak.nix` |
 | Firefox | Telemetri kapalı, sadece HTTPS, takip koruması, uBlock Origin, Safe Browsing kilitli, punycode adresler açıkça gösterilir, PDF içindeki JavaScript kapalı | `firefox.nix` |
-| Ağ | Şifreli ve zararlı alan adı filtreli DNS (Cloudflare Security + Quad9). LLMNR, mDNS ve DHCP'de hostname gönderimi kapalı. Ping'e cevap verilmez. MAC adresi ağa göre farklı | `network/`, `firewall.nix` |
+| Ağ | Şifreli ve zararlı alan adı filtreli DNS (Cloudflare Security + Quad9). LLMNR, mDNS ve DHCP'de hostname gönderimi kapalı. Ping'e cevap verilmez. MAC adresi her ağda farklı ve her açılışta yeni | `network/`, `firewall.nix` |
+| SKIN kill switch | Wi-Fi ve Ethernet'ten WARP tünelinin dışına hiçbir şey çıkmaz (WARP'ın kendisi, şifreli DNS ve adres alma hariç). Bilinmeyen ağda yerel ağa (LAN) sadece modem açık. Ağdan önce kurulur; tünel düşünce ya da DNS susunca bildirim gönderir | `network/skin/` |
 | sudo-rs | Bellek açısından güvenli, Rust ile yazılmış `sudo` | `hosts/portable/default.nix` |
 
 ### Bilerek açık bırakılanlar
 
-- **Disk şifreleme (LUKS) ve USBGuard yok.** USBGuard sistemin kendi SSD'sini kilitliyordu. Disk şifrelemesinin olmaması, taşınabilir bir sistemde bilinen en büyük risk.
 - **LRUN, JRUN, terminalden çalıştırılan `wine` ve Steam** sandbox dışında çalışıyor. Bunlarla çalıştırılacak dosyalar önceden taranmalı.
 - **Proton VPN** Stealth protokolü için 4.18 sürümünü bekliyor (aşağıya bakın).
+- **Disk şifreleme (LUKS) yok, bilinçli karar.** Değerli kişisel veri bu diskte tutulmuyor ve şifreleme her açılışta zaman alır. Ama şifresiz diskte giriş şifresi dosyaları korumaz: SSD başka bir bilgisayara takılınca bir flash bellek gibi okunur. Disk kaybolur ya da çalınırsa hemen: tarayıcı oturumlarını kapat, GitHub deploy key'ini sil, kayıtlı Wi-Fi şifrelerini değiştir.
+- **USBGuard yok.** Sistemin kendi SSD'sini kilitliyordu.
+- **SKIN SEVER'de kill switch tamamen kapalı.** Giriş sayfası açıkken diğer uygulamalar da tünelsiz çıkabilir; SEVER'i kısa tut (10 dk sonra kendiliğinden kapanır).
 
 ### Yanlış alarmlar
 
@@ -106,15 +110,19 @@ spine log                      # Son güvenlik olayları
 sudo thorns-aide check all     # AIDE kontrolünü elle çalıştır
 sudo thorns-aide accept persist  # Kalıcılık noktalarındaki BİLİNEN bir değişikliği onayla
 sudo CSCAN -HOME               # /home'u elle tara
+SKIN                           # Ağ zarı: beş katmanın durumu (SKIN <KATMAN>: ayrıntı)
+sudo SKIN SEVER                # Kafe/otel giriş sayfası için aç (sonra: sudo SKIN SEAL)
+sudo SKIN ROT KS               # Acil: kill switch'i kapat (geri: sudo SKIN SEAL KS)
 ```
 
 ## Ağ: DNS, WARP ve Proton
 
 - **DNS:** Tek DNS otoritesi `dnscrypt-proxy` (`dns.nix`). Sorgular şifreli gider ve zararlı alan adları filtrelenir.
-- **Cloudflare WARP (`warp.nix`):** **Her açılışta kendiliğinden bağlanır.** Modem, okul ağı ve internet sağlayıcı hangi sitelere girildiğini göremez; sağlayıcı yasakları aşılır. `tunnel_only` modunda çalıştığı için DNS'e dokunmaz; DNS yine `dnscrypt-proxy`'den geçer. Konum Türkiye görünmeye devam eder; WARP bir gizlilik VPN'i değildir. Hız kaybı yaklaşık %15-20 (16.3 → 13.5 Mbit/s ölçüldü).
-  - Geçici kapatmak için: `warp-cli disconnect` (bir sonraki açılışta yine bağlanır)
-  - Durum: `warp-cli status`
-- **Proton VPN (`vpn.nix`):** Ülke seçimi ve gerçek gizlilik için. nixpkgs'teki sürüm 4.16.5. Engellere karşı Stealth protokolü 4.18 ile geldi; nixpkgs'e girmesi `proton-vpn-api-core` kütüphanesinin güncellenmesini bekliyor. **WARP ile aynı anda açılmaz:** önce `warp-cli disconnect`.
+- **Cloudflare WARP (`warp.nix`):** **Her açılışta kendiliğinden bağlanır.** Modem, okul ağı ve internet sağlayıcı hangi sitelere girildiğini göremez; sağlayıcı yasakları aşılır. `tunnel_only` modunda çalıştığı için DNS'e dokunmaz; DNS yine `dnscrypt-proxy`'den geçer. Konum Türkiye görünmeye devam eder; WARP bir gizlilik VPN'i değildir. Hız kaybı yaklaşık %15-20 (16.3 → 13.5 Mbit/s ölçüldü). SKIN'in kill switch'i açıkken trafik **sadece** WARP'tan çıkar.
+  - Geçici kapatmak için: `sudo SKIN SEVER TUN KS` (tünel ve kill switch birlikte; geri: `sudo SKIN SEAL`). **`warp-cli disconnect` tek başına interneti keser:** kill switch tünelin dışını tutar.
+  - Durum: `SKIN TUN` ya da `warp-cli status`
+- **Proton VPN (`vpn.nix`):** Ülke seçimi ve gerçek gizlilik için. nixpkgs'teki sürüm 4.16.5. Engellere karşı Stealth protokolü 4.18 ile geldi; nixpkgs'e girmesi `proton-vpn-api-core` kütüphanesinin güncellenmesini bekliyor. **WARP ile aynı anda açılmaz:** `sudo SKIN SEVER TUN KS` → Proton'u bağla → `sudo SKIN SEAL KS` (kill switch Proton'un uç noktasını tanır).
+- **SKIN (`skin/`):** Ağ güvenliğinin beş katmanını (DNS, TUNNEL, KILLSWITCH, LAN, IDENTITY) birlikte yönetir. Kafe ya da otel giriş sayfası: `sudo SKIN SEVER` → giriş yap → `sudo SKIN SEAL`. WARP'ı engelleyen ağda: `sudo SKIN SEVER TUN KS`. Ayrıntılar: [SKIN README](modules/network/skin/README.md).
 
 ## Specialisation'lar
 
@@ -192,6 +200,8 @@ sudo nix eval --impure --raw /etc/nixos#nixosConfigurations.portable.pkgs.proton
 | ClamAV `/home` taraması | Haftalık (pazartesi) | Bilgisayar kapalıysa açıldıktan birkaç dakika sonra çalışır; sadece log tutar |
 | Lynis denetimi | Haftalık | Sadece log tutar |
 | Nix store bütünlük kontrolü | Aylık | |
+| SKIN bekçisi (`skin-watch`) | Sürekli (3 sn) | Kill switch kurallarını durumla eşit tutar, SEVER / ROT zamanlayıcısını işletir, tüneli ve DNS'i izler |
+| NERV açılış taraması (`nerv-boot`) | Her açılış | Sürücüsü eksik parçaları bağlar, girişte uygun GRUB girdisini bildirir |
 
 ## Bilinen tuzaklar ve çözümleri
 
@@ -199,6 +209,9 @@ sudo nix eval --impure --raw /etc/nixos#nixosConfigurations.portable.pkgs.proton
 - **Flatpak oyunları NVIDIA'da açılmıyor (`vr -3`):** `nvidia_uvm` yüklü değilse Vulkan aygıtı oluşturulamaz. Flatpak bu modülü kendisi yükleyemediği için modül açılışta yüklenir (açık modülde NixOS'un NVIDIA modülü bunu kendisi yapar; kapalı modülde `nvidia` yüklenince otomatik gelir).
 - **Flatpak'te HTTPS indirmeleri takılıyor:** `SSL_CERT_FILE` değişkeni `/run/nocer-ca-bundle.crt` dosyasını gösteriyor, ama `/run` Flatpak'in içinden görünmüyor. Bu yüzden dosya oyun başlatıcılarına salt okunur olarak açılır (`flatpak.nix`).
 - **Flatpak izinleri ancak uygulama yeniden başlayınca geçerli olur:** önce `flatpak kill <uygulama>`. Kullanıcı seviyesindeki geçici izinleri temizlemek için `flatpak override --user --reset <uygulama>`.
+- **`RUNTIME_DIRECTORY` ve warp-cli:** systemd, `RuntimeDirectory=` kullanan bir servise `RUNTIME_DIRECTORY` değişkenini verir; bu değişken servisin çalıştırdığı komutlara da geçer. `warp-cli` onu WARP servisinin soket dizini sanıp "Maybe the daemon is not running?" diyor. SKIN'in bekçisi bu yüzden WARP'ı hep kopuk sanıyordu (SKIN 0.0.4'te düzeldi: SKIN çalıştırdığı her komuttan `RUNTIME_DIRECTORY` ve `STATE_DIRECTORY`'yi siler). Başka araç çağıran yeni bir serviste de aynı şeye dikkat.
+- **WARP'ın gerçek uç noktası belgelerde yok:** ücretsiz WARP (MASQUE) `162.159.198.x:443`'e bağlanıyor; Cloudflare'in güvenlik duvarı belgesi Zero Trust'a göre yazıldığı için bu aralığı listelemiyor. Kill switch'e uç nokta eklerken gerçek bağlantıya bakın: `sudo ss -tunap | grep warp-svc`.
+- **GitHub istek sınırı (WARP üzerinden):** WARP'ın paylaşılan IP'si GitHub API sınırına takılabiliyor (`API rate limit exceeded ... using cached version`). `nix flake update` bu durumda önbellekteki sürümle devam edebilir; güncelleme beklenen sürümü getirmediyse sebep bu olabilir.
 
 ## Yeni bir host eklemek
 
@@ -214,6 +227,8 @@ sudo nix eval --impure --raw /etc/nixos#nixosConfigurations.portable.pkgs.proton
 3. `rebuild.sh` ile yeni yapılandırmayı uygulayın.
 
 `modules/` klasörüne hiç dokunmanız gerekmez; taşıma yalnızca `hosts/` düzeyinde yapılır. WARP kaydı ve modu yeni kurulumda kendiliğinden yapılır.
+
+SKIN'in bilinen ağ listesi (`/var/lib/skin/known`) git'te olmadığı için taşınmaz: yeni kurulumda evde bir kez `sudo SKIN TRUST`.
 
 ## Henüz deklaratif olmayan kısımlar
 
