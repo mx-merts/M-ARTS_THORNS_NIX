@@ -72,8 +72,8 @@ fn tick(w: &mut Watch) {
 
     let n = net::scan();
 
-    // 2. Firewall follows the state, the network and the WireGuard endpoints.
-    let wg = net::wg_endpoints();
+    // 2. Firewall follows the state, the network and the VPN endpoints.
+    let wg = net::vpn_endpoints();
     let script = firewall::ruleset(&firewall::Plan { ks: st.mode(Layer::Ks), lan: st.mode(Layer::Lan), net: &n, wg: &wg });
     if script != w.last_rules || !firewall::present() {
         match firewall::apply(&script) {

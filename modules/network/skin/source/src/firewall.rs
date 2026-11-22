@@ -90,10 +90,10 @@ pub fn ruleset(plan: &Plan) -> String {
         r += "\t\tip daddr @dns4 accept\n\t\tip6 daddr @dns6 accept\n";
         let (v6, v4): (Vec<&String>, Vec<&String>) = plan.wg.iter().partition(|a| a.contains(':'));
         if !v4.is_empty() {
-            r += &format!("\t\tip daddr {{ {} }} accept comment \"skin: wireguard endpoints\"\n", join(&v4));
+            r += &format!("\t\tip daddr {{ {} }} accept comment \"skin: vpn endpoints\"\n", join(&v4));
         }
         if !v6.is_empty() {
-            r += &format!("\t\tip6 daddr {{ {} }} accept comment \"skin: wireguard endpoints\"\n", join(&v6));
+            r += &format!("\t\tip6 daddr {{ {} }} accept comment \"skin: vpn endpoints\"\n", join(&v6));
         }
         r += "\t\tcounter reject with icmpx admin-prohibited comment \"skin: outside the tunnel\"\n";
     }
@@ -179,7 +179,7 @@ mod tests {
     }
 
     #[test]
-    fn wireguard_endpoints_pass_the_kill_switch() {
+    fn vpn_endpoints_pass_the_kill_switch() {
         let n = net(false);
         let wg = vec!["185.159.157.10".to_string(), "2a07:b944::2:2".to_string()];
         let r = ruleset(&Plan { ks: Mode::Seal, lan: Mode::Sever, net: &n, wg: &wg });

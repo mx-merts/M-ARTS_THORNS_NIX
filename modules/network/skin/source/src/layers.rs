@@ -90,7 +90,7 @@ fn tun(mode: Mode) -> Result<String, String> {
 
 /// KS and LAN: rebuild the whole nftables table from the state.
 pub fn apply_firewall(st: &State, net: &Net) -> Result<String, String> {
-    let wg = net::wg_endpoints();
+    let wg = net::vpn_endpoints();
     let script = firewall::ruleset(&Plan { ks: st.mode(Layer::Ks), lan: st.mode(Layer::Lan), net, wg: &wg });
     firewall::apply(&script)?;
     let _ = sys::write_atomic(&sys::p(&format!("{}/rules", state::DIR)), &script);

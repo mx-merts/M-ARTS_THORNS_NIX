@@ -93,7 +93,6 @@ nixpkgs'ta bulunmayan, bu depo için özel olarak geliştirilmiş modüller:
 ### Bilerek açık bırakılanlar
 
 - **LRUN, JRUN, terminalden çalıştırılan `wine` ve Steam** sandbox dışında çalışıyor. Bunlarla çalıştırılacak dosyalar önceden taranmalı.
-- **Proton VPN** Stealth protokolü için 4.18 sürümünü bekliyor (aşağıya bakın).
 - **Disk şifreleme (LUKS) yok, bilinçli karar.** Değerli kişisel veri bu diskte tutulmuyor ve şifreleme her açılışta zaman alır. Ama şifresiz diskte giriş şifresi dosyaları korumaz: SSD başka bir bilgisayara takılınca bir flash bellek gibi okunur. Disk kaybolur ya da çalınırsa hemen: tarayıcı oturumlarını kapat, GitHub deploy key'ini sil, kayıtlı Wi-Fi şifrelerini değiştir.
 - **USBGuard yok.** Sistemin kendi SSD'sini kilitliyordu.
 - **SKIN SEVER'de kill switch tamamen kapalı.** Giriş sayfası açıkken diğer uygulamalar da tünelsiz çıkabilir; SEVER'i kısa tut (10 dk sonra kendiliğinden kapanır).
@@ -121,7 +120,7 @@ sudo SKIN ROT KS               # Acil: kill switch'i kapat (geri: sudo SKIN SEAL
 - **Cloudflare WARP (`warp.nix`):** **Her açılışta kendiliğinden bağlanır.** Modem, okul ağı ve internet sağlayıcı hangi sitelere girildiğini göremez; sağlayıcı yasakları aşılır. `tunnel_only` modunda çalıştığı için DNS'e dokunmaz; DNS yine `dnscrypt-proxy`'den geçer. Konum Türkiye görünmeye devam eder; WARP bir gizlilik VPN'i değildir. Hız kaybı yaklaşık %15-20 (16.3 → 13.5 Mbit/s ölçüldü). SKIN'in kill switch'i açıkken trafik **sadece** WARP'tan çıkar.
   - Geçici kapatmak için: `sudo SKIN SEVER TUN KS` (tünel ve kill switch birlikte; geri: `sudo SKIN SEAL`). **`warp-cli disconnect` tek başına interneti keser:** kill switch tünelin dışını tutar.
   - Durum: `SKIN TUN` ya da `warp-cli status`
-- **Proton VPN (`vpn.nix`):** Ülke seçimi ve gerçek gizlilik için. nixpkgs'teki sürüm 4.16.5. Engellere karşı Stealth protokolü 4.18 ile geldi; nixpkgs'e girmesi `proton-vpn-api-core` kütüphanesinin güncellenmesini bekliyor. **WARP ile aynı anda açılmaz:** `sudo SKIN SEVER TUN KS` → Proton'u bağla → `sudo SKIN SEAL KS` (kill switch Proton'un uç noktasını tanır).
+- **Proton VPN (`vpn.nix`):** Ülke seçimi ve gerçek gizlilik için (sürüm 4.19). Ayarlarda **Use Proton protocols** işaretliyken protokoller **Smart**, **Wireguard UDP**, **Wireguard TCP** ve **Stealth**: Smart, engelsiz ağda en hızlısını seçer, engel varsa Stealth'e (WireGuard'ı TLS içine saran, engellenmesi zor protokol) geçer. Proton protocols, NetworkManager eklentisi `nm-protun` ile çalışır; eklenti `vpn.nix`'te `networking.networkmanager.plugins` ile kayıtlıdır. **WARP ile aynı anda açılmaz:** `sudo SKIN SEVER TUN KS` → Proton'u bağla → `sudo SKIN SEAL KS` (kill switch Proton'un uç noktasını tanır: kernel WireGuard'da `wg show`'dan, Proton protocols'te bağlantının ayarlarından). İş bitince `sudo SKIN SEAL`: WARP geri gelir.
 - **SKIN (`skin/`):** Ağ güvenliğinin beş katmanını (DNS, TUNNEL, KILLSWITCH, LAN, IDENTITY) birlikte yönetir. Kafe ya da otel giriş sayfası: `sudo SKIN SEVER` → giriş yap → `sudo SKIN SEAL`. WARP'ı engelleyen ağda: `sudo SKIN SEVER TUN KS`. Ayrıntılar: [SKIN README](modules/network/skin/README.md).
 
 ## Specialisation'lar
@@ -194,7 +193,7 @@ sudo nix eval --impure --raw /etc/nixos#nixosConfigurations.portable.pkgs.proton
 
 | Ne | Ne zaman | Not |
 | --- | --- | --- |
-| `thorns-upgrade` (nixpkgs güncellemesi) | Pazar 04:00 | Yeni sistemi sadece bir sonraki açılış için hazırlar, çalışan oturuma dokunmaz. Bilgisayar o saatte kapalıysa açılınca çalışır |
+| `thorns-upgrade` (nixpkgs güncellemesi) | Pazar 04:00 | Yeni sistemi sadece bir sonraki açılış için hazırlar, çalışan oturuma dokunmaz. Bilgisayar o saatte kapalıysa açılınca çalışır. `flake.lock` son 24 saatte güncellendiyse (elle güncellemeli rebuild) hiçbir şey yapmaz |
 | fangfrisch (ek ClamAV imzaları) | Saatlik | |
 | AIDE kontrolü | Günlük | |
 | ClamAV `/home` taraması | Haftalık (pazartesi) | Bilgisayar kapalıysa açıldıktan birkaç dakika sonra çalışır; sadece log tutar |
@@ -212,6 +211,9 @@ sudo nix eval --impure --raw /etc/nixos#nixosConfigurations.portable.pkgs.proton
 - **`RUNTIME_DIRECTORY` ve warp-cli:** systemd, `RuntimeDirectory=` kullanan bir servise `RUNTIME_DIRECTORY` değişkenini verir; bu değişken servisin çalıştırdığı komutlara da geçer. `warp-cli` onu WARP servisinin soket dizini sanıp "Maybe the daemon is not running?" diyor. SKIN'in bekçisi bu yüzden WARP'ı hep kopuk sanıyordu (SKIN 0.0.4'te düzeldi: SKIN çalıştırdığı her komuttan `RUNTIME_DIRECTORY` ve `STATE_DIRECTORY`'yi siler). Başka araç çağıran yeni bir serviste de aynı şeye dikkat.
 - **WARP'ın gerçek uç noktası belgelerde yok:** ücretsiz WARP (MASQUE) `162.159.198.x:443`'e bağlanıyor; Cloudflare'in güvenlik duvarı belgesi Zero Trust'a göre yazıldığı için bu aralığı listelemiyor. Kill switch'e uç nokta eklerken gerçek bağlantıya bakın: `sudo ss -tunap | grep warp-svc`.
 - **GitHub istek sınırı (WARP üzerinden):** WARP'ın paylaşılan IP'si GitHub API sınırına takılabiliyor (`API rate limit exceeded ... using cached version`). `nix flake update` bu durumda önbellekteki sürümle devam edebilir; güncelleme beklenen sürümü getirmediyse sebep bu olabilir.
+- **Rebuild `thorns-upgrade` yüzünden takılıyor:** rebuild zamanlayıcıları yeniden başlatınca `Persistent=true`, kaçırılan pazar çalışmasını hemen başlatıyordu; geçiş bu oneshot servisin bitmesini, servis de `rebuild.sh`'in tuttuğu kilidi bekliyordu (kilitlenme). Servis artık `restartIfChanged = false` ile rebuild'de yeniden başlatılmaz. Yine takılırsa başka bir terminalde: `sudo systemctl stop thorns-upgrade.service`.
+- **Proton'da Stealth / Smart görünmüyor:** Proton protocols, NetworkManager eklentisi `nm-protun` ister; nixpkgs eklentiyi pakete koyar ama kaydetmez. `vpn.nix`: `networking.networkmanager.plugins = [ pkgs.python3Packages.proton-vpn-api-core ];` Ardından uygulamada **Use Proton protocols** işaretlenir.
+- **Proton protocols `wg show`'da görünmez:** bağlantı kernel WireGuard değil, kullanıcı alanında çalışan bir tun aygıtı (`proton0`). SKIN 0.0.5'ten beri kill switch sunucu adresini etkin VPN bağlantısının ayarlarından (`nmcli -g vpn.data`, `"endpoint"`) okur.
 
 ## Yeni bir host eklemek
 

@@ -185,8 +185,24 @@ pub fn macs(iface: &str) -> (Option<String>, Option<String>) {
     (cur, perm)
 }
 
-/// Endpoints of WireGuard tunnels (Proton): the kill switch lets them through.
-pub fn wg_endpoints() -> Vec<String> {
+/// Outer endpoints of the VPN tunnels the kill switch must let through:
+///   - kernel WireGuard (Proton's classic WireGuard): `wg show`
+///   - Proton protocols (Smart / Wireguard UDP-TCP / Stealth, NetworkManager
+///     plugin "nm-protun"): a userspace tun device, invisible to `wg`. Its
+///     server is in the active VPN connection's settings JSON ("endpoint"),
+///     which NetworkManager publishes while the connection is still
+///     activating, so the rule is in place before the first packet.
+///
+/// Sorted and deduplicated, so the ruleset only changes when an endpoint does.
+pub fn vpn_endpoints() -> Vec<String> {
+    let mut eps = wg_endpoints();
+    eps.extend(protun_endpoints());
+    eps.sort();
+    eps.dedup();
+    eps
+}
+
+fn wg_endpoints() -> Vec<String> {
     let out = sys::run("wg", &["show", "all", "endpoints"], 3).unwrap_or_default();
     out.lines()
         .filter_map(|l| l.split_whitespace().nth(2))
@@ -200,9 +216,51 @@ pub fn wg_endpoints() -> Vec<String> {
         .collect()
 }
 
+fn protun_endpoints() -> Vec<String> {
+    let active = sys::run("nmcli", &["-t", "-f", "UUID,TYPE", "connection", "show", "--active"], 3)
+        .unwrap_or_default();
+    active
+        .lines()
+        .filter_map(|l| l.split_once(':'))
+        .filter(|(_, kind)| *kind == "vpn")
+        .flat_map(|(uuid, _)| {
+            let data = sys::run("nmcli", &["-g", "vpn.data", "connection", "show", "uuid", uuid], 3)
+                .unwrap_or_default();
+            endpoints_in_vpn_data(&data)
+        })
+        .collect()
+}
+
+/// `vpn.data` holds a JSON blob, escaped by nmcli (`\:`, `\\`), e.g.
+/// `"endpoint"\: "185.107.56.69"`. Splitting on quotes is enough: the value
+/// is the first of the next few tokens that parses as an IP address.
+fn endpoints_in_vpn_data(data: &str) -> Vec<String> {
+    let toks: Vec<&str> = data.split('"').collect();
+    let mut out = Vec::new();
+    for (i, t) in toks.iter().enumerate() {
+        if *t != "endpoint" {
+            continue;
+        }
+        if let Some(ip) = toks.iter().skip(i + 1).take(3).find_map(|v| v.trim().parse::<std::net::IpAddr>().ok()) {
+            out.push(ip.to_string());
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn finds_protun_endpoint_in_vpn_data() {
+        // Real nmcli -g vpn.data output of a Proton protocols connection.
+        let data = r#"settings = {"version"\: 1\\\, "peers"\: [{"id"\: "NL-FREE#126"\\\, "endpoint"\: "185.107.56.69"\\\, "udp-ports"\: [1224\\\, 443]\\\, "tcp-ports"\: [443]\\\, "tls-ports"\: [443]\\\, "priority"\: 0}]\\\, "pcap-file"\: null}"#;
+        assert_eq!(endpoints_in_vpn_data(data), vec!["185.107.56.69"]);
+        let v6 = r#""endpoint"\: "2a07:b944::2:2""#;
+        assert_eq!(endpoints_in_vpn_data(v6), vec!["2a07:b944::2:2"]);
+        assert!(endpoints_in_vpn_data("remote = 1.2.3.4").is_empty());
+    }
 
     #[test]
     fn splits_terse_output() {
