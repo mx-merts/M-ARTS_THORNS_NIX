@@ -6,6 +6,10 @@
   # deprecated oldugu icin kendi servisimizi yaziyoruz.)
   systemd.services.thorns-upgrade = {
     description = "Haftalik otomatik guncelleme (bir sonraki acilis icin)";
+    # Rebuild bu servisi ASLA yeniden baslatmasin: oneshot oldugu icin
+    # switch-to-configuration onun bitmesini bekler, o da rebuild.sh'in
+    # tuttugu kilidi bekler -> kilitlenme (22 Kasim 2026, rebuild 7 dk takildi).
+    restartIfChanged = false;
     after = [ "network-online.target" ];
     wants = [ "network-online.target" ];
     path = with pkgs; [
@@ -31,6 +35,12 @@
       fi
 
       cd /etc/nixos
+      # Bu arada elle guncellemeli bir rebuild yapildiysa ayni isi tekrar
+      # yapma (zamanlayici rebuild sirasinda tetiklenip kilidi bekleyebilir).
+      if [ -n "$(find flake.lock -mmin -1440)" ]; then
+        echo "thorns-upgrade: flake.lock son 24 saatte guncellenmis, atlaniyor."
+        exit 0
+      fi
 
       # AIDE: check /boot first, so an unattended upgrade never re-baselines a
       # boot partition that was changed outside a rebuild (SPINE gets an alert).
