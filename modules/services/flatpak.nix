@@ -35,6 +35,12 @@ in
     ];
 
     overrides.settings = {
+
+      # NOCER SSL_CERT_FILE'i /run/nocer-ca-bundle.crt'ye yonlendiriyor ama /run
+      # Flatpak'in icinden gorunmuyor: dosya yoksa HTTPS hic calismiyor (Lutris
+      # 7 Kas, Sober 22 Kas 2026: "Failed to fetch remote manifest"). global:
+      # her Flatpak'e (simdiki ve ileride kurulacak) sadece bu dosya, salt okunur.
+      global.Context.filesystems = [ "/run/nocer-ca-bundle.crt:ro" ];
       # Lutris: oyunlar ~/OYUNLAR'da; indirilen kurulum dosyalari salt-okunur.
       "net.lutris.Lutris".Context.filesystems =
         gameSandbox "~/OYUNLAR" [ "xdg-download:ro" ];
