@@ -16,6 +16,13 @@ pub const TABLE: &str = "inet skin";
 /// consumer MASQUE (198) and their IPv6 ranges. All Cloudflare's own.
 const WARP4: &str = "162.159.137.105, 162.159.138.105, 162.159.192.0/24, 162.159.193.0/24, 162.159.197.0/24, 162.159.198.0/24";
 const WARP6: &str = "2606:4700:7::a29f:8969, 2606:4700:7::a29f:8a69, 2606:4700:d0::/48, 2606:4700:d1::/48, 2606:4700:100::/48, 2606:4700:102::/48, 2606:4700:103::/48";
+/// WARP's own connectivity / captive-portal checks: plain HTTP (port 80) from
+/// warp-svc (root) to these Cloudflare addresses, before and while it
+/// connects. Held by the kill switch, WARP sometimes gave up at boot with
+/// "Status update: Unable" (kernel log, 22 Nov 2026: skin-ks UID=0 DPT=80).
+/// Only port 80 to exactly these hosts: they sit in Cloudflare ranges that
+/// also serve websites, so the whole range is not opened.
+const WARPCHECK4: &str = "162.159.137.65, 104.24.0.1, 172.64.1.0";
 /// Encrypted DNS resolvers of dns.nix (cloudflare-security DoH, Quad9
 /// DNSCrypt) and dnscrypt-proxy's bootstrap resolver. Already encrypted: they
 /// may go out while the tunnel is down, so WARP itself can resolve names.
@@ -52,6 +59,7 @@ pub fn ruleset(plan: &Plan) -> String {
     r += "table inet skin\ndelete table inet skin\ntable inet skin {\n";
     r += &format!("\tset warp4 {{ type ipv4_addr; flags interval; elements = {{ {WARP4} }} }}\n");
     r += &format!("\tset warp6 {{ type ipv6_addr; flags interval; elements = {{ {WARP6} }} }}\n");
+    r += &format!("\tset warpcheck4 {{ type ipv4_addr; elements = {{ {WARPCHECK4} }} }}\n");
     r += &format!("\tset dns4 {{ type ipv4_addr; elements = {{ {DNS4} }} }}\n");
     r += &format!("\tset dns6 {{ type ipv6_addr; elements = {{ {DNS6} }} }}\n");
     r += &format!("\tset lan4 {{ type ipv4_addr; flags interval; elements = {{ {LAN4} }} }}\n");
@@ -87,6 +95,7 @@ pub fn ruleset(plan: &Plan) -> String {
     // KILLSWITCH layer.
     if plan.ks_armed() {
         r += "\t\tip daddr @warp4 accept\n\t\tip6 daddr @warp6 accept\n";
+        r += "\t\tip daddr @warpcheck4 tcp dport 80 accept comment \"skin: warp checks\"\n";
         r += "\t\tip daddr @dns4 accept\n\t\tip6 daddr @dns6 accept\n";
         let (v6, v4): (Vec<&String>, Vec<&String>) = plan.wg.iter().partition(|a| a.contains(':'));
         if !v4.is_empty() {
@@ -162,6 +171,7 @@ mod tests {
         assert!(r.contains("ip daddr 192.168.1.1 accept"));
         assert!(r.contains("skin: LAN isolated"));
         assert!(r.contains("skin: outside the tunnel"));
+        assert!(r.contains("ip daddr @warpcheck4 tcp dport 80 accept"));
     }
 
     #[test]
