@@ -24,6 +24,7 @@ struct Watch {
     tun_down_since: Option<u64>,
     tun_severed: bool,
     tun_rotting: bool,
+    tun_kicked: bool,
     dns_fails: u32,
     dns_severed: bool,
     last_dns_check: u64,
@@ -130,8 +131,19 @@ fn tick(w: &mut Watch) {
             w.tun_down_since = None;
             w.tun_severed = false;
             w.tun_rotting = false;
+            w.tun_kicked = false;
         } else {
             let since = *w.tun_down_since.get_or_insert(now);
+            // Self-heal, once per outage: warp-svc that came up before the
+            // network ("Connection failed to start error=NoNetwork") could
+            // stay stuck and stop answering warp-cli; a disconnect + connect
+            // got it going in 3 s (22 Nov 2026, by hand: SKIN ROT, SKIN SEAL).
+            if now - since >= 30 && !w.tun_kicked {
+                w.tun_kicked = true;
+                let _ = sys::run("warp-cli", &["--accept-tos", "disconnect"], 10);
+                let _ = sys::run("warp-cli", &["--accept-tos", "connect"], 10);
+                state::event("TUNNEL KICKED", "WARP down for 30 s · disconnected and reconnected it once", false);
+            }
             let held = st.mode(Layer::Ks) == Mode::Seal;
             if now - since >= 15 && !w.tun_severed {
                 let body = if held {
@@ -151,6 +163,7 @@ fn tick(w: &mut Watch) {
         w.tun_down_since = None;
         w.tun_severed = false;
         w.tun_rotting = false;
+        w.tun_kicked = false;
     }
 
     // 5. DNS, every 30 s while connected.

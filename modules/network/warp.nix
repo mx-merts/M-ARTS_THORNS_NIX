@@ -28,6 +28,16 @@
     openFirewall = false;
   };
 
+  # Ag gelmeden baslayan warp-svc "Connection failed to start error=NoNetwork"
+  # deyip takili kalabiliyordu (22 Kasim 2026: warp-cli cevap vermedi, kill
+  # switch acilista interneti tuttu). Ag hazir olunca baslasin. Girisi
+  # geciktirmez: giris ekrani multi-user.target'i beklemez. Yine takilirsa
+  # SKIN'in bekcisi 30 sn sonra WARP'i bir kez kesip yeniden baglar.
+  systemd.services.cloudflare-warp = {
+    wants = [ "network-online.target" ];
+    after = [ "network-online.target" ];
+  };
+
   # Her acilista: kayitli degilse kaydol (Cloudflare kosullari --accept-tos ile
   # kabul), DNS'e dokunmayan modu zorla, baglan. Kayit ve mod warp-svc'nin
   # kendi durum dosyasinda tutuldugu icin deklaratif hale getirmenin yolu bu.

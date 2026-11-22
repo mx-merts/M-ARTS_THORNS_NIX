@@ -1,4 +1,4 @@
-# SKIN-0.0.8 — Network Membrane
+# SKIN-0.0.9 — Network Membrane
 
 > THORNS'un derisi: dış dünyayla aradaki zar. Ağ güvenliğinin bütün katmanlarını tek komutla sıkar ya da gevşetir. SPINE güvenliği izler, NERV donanımı; SKIN ağı.
 
@@ -88,6 +88,7 @@ Kendi kanalı var (SPINE ve NERV'den bağımsız). Gönderdikleri:
 
 - `SEALED ── 5 of 5 layers` · `SEVERED ── <ağ>` · `ROTTEN ── <ağ>` — bütün deri değişince
 - `KILLSWITCH ROTTED`, `DNS TUNNEL SEVERED` — tek katman değişince
+- `TUNNEL KICKED` — WARP 30 sn'dir yok, bekçi onu bir kez kesip yeniden bağladı (açılışta takılan WARP'ı böyle kurtarır)
 - `TUNNEL SEVERED` — WARP 15 sn'dir yok (ekranda kalır); `TUNNEL ROTTING` — 5 dk'dır yok; `TUNNEL SEALED` — geri geldi. Bildirimde warp-cli'nin ne dediği de yazar; bekçinin WARP hakkında son gördüğü: `SKIN TUN` → WATCHER
 - `DNS SEVERED` / `DNS SEALED` — şifreli DNS cevap vermiyor / yine veriyor
 - `KILLSWITCH SEVERED` / `KILLSWITCH SEALED` — kurallar yüklenemedi / yine yüklendi
