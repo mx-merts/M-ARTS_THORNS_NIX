@@ -25,4 +25,10 @@
   # WireGuard'in asimetrik routing'i reverse-path filtering ile cakisiyor,
   # bu olmadan ProtonVPN GUI baglanir ama hicbir paket disari cikmaz.
   networking.firewall.checkReversePath = false;
+  
+    # Proton protocols (Stealth dahil), NetworkManager eklentisi "nm-protun"
+    # uzerinden calisir. nixpkgs paketi eklentiyi icerir ama kaydetmez:
+    # plugins listesine verilince NetworkManager ve libnm onu bulur, D-Bus
+    # izinleri de kurulur. Bu olmadan uygulama Stealth'i hic gostermez.
+    networking.networkmanager.plugins = [ pkgs.python3Packages.proton-vpn-api-core ];
 }
