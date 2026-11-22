@@ -94,6 +94,16 @@ fn tick(w: &mut Watch) {
         }
     }
 
+    // 2b. DNS SEAL: no uplink may be a DNS default route (NetworkManager
+    //     turns it back on with every reconnect / DHCP renewal).
+    if st.mode(Layer::Dns) == Mode::Seal {
+        for i in &n.uplinks {
+            if net::dns_default_route(i) == Some(true) {
+                let _ = sys::run("resolvectl", &["default-route", i, "false"], 5);
+            }
+        }
+    }
+
     // 3. A new network.
     if n.iface.is_some() && n.ssid != w.last_ssid {
         if !w.first || n.ssid.is_some() {

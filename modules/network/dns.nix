@@ -1,7 +1,9 @@
 # AMAC: Sistem geneli şifreli DNS (DoH, Cloudflare birincil / Quad9 yedek) + yerel
 # cache. Tek DNS otoritesi burasıdır. VPN arayüzü kendi DNS'ini push etmeyecek
 # şekilde ayarlanacağı için (bkz. vpn.nix), services.resolved.settings.Resolve.Domains
-# = "~." global catch-all olarak tek otoriteyi garanti eder.
+# = "~." global catch-all. TEK BASINA YETMIYOR: NetworkManager her karti
+# resolved'da DNS "varsayilan yolu" yapiyor ve sorgular modemin DNS'ine de
+# gidiyor. Kartlarin varsayilan yolunu SKIN kapatir (DNS SEAL, skin/).
 # NOT: networking.networkmanager.dns burada AYARLANMAZ — services.resolved.enable
 # zaten bunu "systemd-resolved" olarak zorluyor, bu da doğru davranış (NetworkManager
 # resolv.conf'u kendi yazmıyor, DNS bilgisini resolved'a devrediyor).

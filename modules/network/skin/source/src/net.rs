@@ -185,6 +185,22 @@ pub fn macs(iface: &str) -> (Option<String>, Option<String>) {
     (cur, perm)
 }
 
+/// Does systemd-resolved also send ordinary queries to this link's own DNS
+/// servers (the network's, from DHCP)? `resolvectl default-route wlo1`
+/// prints "Link 3 (wlo1): yes". None: link unknown to resolved.
+pub fn dns_default_route(iface: &str) -> Option<bool> {
+    let out = sys::run("resolvectl", &["default-route", iface], 3).ok()?;
+    parse_default_route(&out)
+}
+
+fn parse_default_route(out: &str) -> Option<bool> {
+    match out.trim().rsplit(':').next()?.trim() {
+        "yes" => Some(true),
+        "no" => Some(false),
+        _ => None,
+    }
+}
+
 /// Outer endpoints of the VPN tunnels the kill switch must let through:
 ///   - kernel WireGuard (Proton's classic WireGuard): `wg show`
 ///   - Proton protocols (Smart / Wireguard UDP-TCP / Stealth, NetworkManager
@@ -309,6 +325,13 @@ mod tests {
         // Long gone: forgotten.
         let (eps, _) = remember_endpoints(&text, &[], 1000 + STICKY_SECS + 1);
         assert!(eps.is_empty());
+    }
+
+    #[test]
+    fn reads_default_route() {
+        assert_eq!(parse_default_route("Link 3 (wlo1): yes\n"), Some(true));
+        assert_eq!(parse_default_route("Link 2 (enp4s0): no"), Some(false));
+        assert_eq!(parse_default_route(""), None);
     }
 
     #[test]

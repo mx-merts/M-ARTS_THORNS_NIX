@@ -53,12 +53,21 @@ fn dns(mode: Mode, net: &Net) -> Result<String, String> {
                 // Gives the link back its normal DNS settings.
                 let _ = sys::run("nmcli", &["device", "reapply", i], 15);
             }
+            // NetworkManager marks every uplink as a DNS "default route", so
+            // resolved sent queries to the network's (ISP's) plain DNS too,
+            // next to dnscrypt: a leak whenever the kill switch is off. Only
+            // the global 127.0.0.1 (dnscrypt) may answer; the watcher keeps
+            // it so when NetworkManager pushes the link settings again.
+            for i in &net.uplinks {
+                let _ = sys::run("resolvectl", &["default-route", i, "false"], 5);
+            }
             Ok(String::new())
         }
         Mode::Sever | Mode::Rot => {
             let i = need_iface(net)?;
             sys::run("systemctl", &["stop", "dnscrypt-proxy"], 15)?;
             sys::run("resolvectl", &["domain", &i, "~."], 5)?;
+            sys::run("resolvectl", &["default-route", &i, "true"], 5)?;
             Ok(String::new())
         }
     }
