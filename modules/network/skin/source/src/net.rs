@@ -193,13 +193,49 @@ pub fn macs(iface: &str) -> (Option<String>, Option<String>) {
 ///     which NetworkManager publishes while the connection is still
 ///     activating, so the rule is in place before the first packet.
 ///
+/// Endpoints stay allowed for STICKY_SECS after they were last seen: when
+/// the Proton app reconnects it tears the connection down and creates a new
+/// one, and for a moment no VPN connection is active. Without the grace
+/// period the watcher would drop the rule exactly then and block the
+/// reconnect's handshake (seen 22 Nov 2026: 4 s of failed handshakes).
 /// Sorted and deduplicated, so the ruleset only changes when an endpoint does.
 pub fn vpn_endpoints() -> Vec<String> {
-    let mut eps = wg_endpoints();
-    eps.extend(protun_endpoints());
-    eps.sort();
-    eps.dedup();
+    let mut live = wg_endpoints();
+    live.extend(protun_endpoints());
+    let path = p(&format!("{}/vpn-endpoints", state::DIR));
+    let old = std::fs::read_to_string(&path).unwrap_or_default();
+    let (eps, text) = remember_endpoints(&old, &live, sys::now());
+    if text != old {
+        let _ = sys::write_atomic(&path, &text);
+    }
     eps
+}
+
+const STICKY_SECS: u64 = 120;
+
+/// Merges the endpoints seen now into the remembered list ("<ip> <time>"
+/// per line), forgets the ones not seen for STICKY_SECS. Returns the
+/// endpoints to allow and the new file content.
+fn remember_endpoints(old: &str, live: &[String], now: u64) -> (Vec<String>, String) {
+    let mut seen: Vec<(String, u64)> = old
+        .lines()
+        .filter_map(|l| {
+            let (ip, t) = l.split_once(' ')?;
+            Some((ip.to_string(), t.parse().ok()?))
+        })
+        .collect();
+    for ip in live {
+        match seen.iter_mut().find(|(s, _)| s == ip) {
+            Some(e) => e.1 = now,
+            None => seen.push((ip.clone(), now)),
+        }
+    }
+    seen.retain(|(_, t)| now.saturating_sub(*t) <= STICKY_SECS);
+    seen.sort();
+    let text = seen.iter().map(|(ip, t)| format!("{ip} {t}\n")).collect();
+    let mut eps: Vec<String> = seen.into_iter().map(|(ip, _)| ip).collect();
+    eps.dedup();
+    (eps, text)
 }
 
 fn wg_endpoints() -> Vec<String> {
@@ -260,6 +296,19 @@ mod tests {
         let v6 = r#""endpoint"\: "2a07:b944::2:2""#;
         assert_eq!(endpoints_in_vpn_data(v6), vec!["2a07:b944::2:2"]);
         assert!(endpoints_in_vpn_data("remote = 1.2.3.4").is_empty());
+    }
+
+    #[test]
+    fn endpoints_stay_for_a_grace_period() {
+        let live = vec!["185.107.56.69".to_string()];
+        let (eps, text) = remember_endpoints("", &live, 1000);
+        assert_eq!(eps, vec!["185.107.56.69"]);
+        // Reconnect gap: nothing active, still allowed.
+        let (eps, text) = remember_endpoints(&text, &[], 1030);
+        assert_eq!(eps, vec!["185.107.56.69"]);
+        // Long gone: forgotten.
+        let (eps, _) = remember_endpoints(&text, &[], 1000 + STICKY_SECS + 1);
+        assert!(eps.is_empty());
     }
 
     #[test]

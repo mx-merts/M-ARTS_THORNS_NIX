@@ -1,4 +1,4 @@
-# SKIN-0.0.5 — Network Membrane
+# SKIN-0.0.6 — Network Membrane
 
 > THORNS'un derisi: dış dünyayla aradaki zar. Ağ güvenliğinin bütün katmanlarını tek komutla sıkar ya da gevşetir. SPINE güvenliği izler, NERV donanımı; SKIN ağı.
 
@@ -54,7 +54,7 @@ Komut yapısı: **`SKIN <DURUM> [KATMAN..]`**. Katman verilmezse bütün deri de
 
 - **DNS:** SEAL `dnscrypt-proxy`'yi başlatır ve bağlantının DNS ayarını geri yükler (`nmcli device reapply`). SEVER/ROT onu durdurur ve sorguları ağın DNS'ine verir (`resolvectl domain <arayüz> ~.`). Giriş sayfaları ancak böyle açılır: sayfanın adresini sadece ağın DNS'i bilir.
 - **TUNNEL:** `warp-cli connect / disconnect`. Bağlanması en fazla 15 sn beklenir.
-- **KILLSWITCH ve LAN:** tek bir nftables tablosu, `inet skin`. Her değişiklikte bütünüyle, tek işlemde yeniden kurulur. Sadece fiziksel kartlardan (Wi-Fi, Ethernet) **çıkan** trafiğe bakar; tünel, loopback ve gelen trafik ona dokunmaz (gelen bağlantıları NixOS güvenlik duvarı her durumda kapalı tutar). Kill switch açıkken kartlardan sadece şunlar çıkabilir: adres alma (DHCP, IPv6 komşu keşfi), WARP'ın kendi uç noktaları, şifreli DNS sunucuları ve Proton'un uç noktası (kernel WireGuard: `wg show`; Proton protocols / Stealth: etkin VPN bağlantısının ayarlarındaki `"endpoint"`). Gerisi reddedilir ve sayılır (`SKIN KS` → HELD).
+- **KILLSWITCH ve LAN:** tek bir nftables tablosu, `inet skin`. Her değişiklikte bütünüyle, tek işlemde yeniden kurulur. Sadece fiziksel kartlardan (Wi-Fi, Ethernet) **çıkan** trafiğe bakar; tünel, loopback ve gelen trafik ona dokunmaz (gelen bağlantıları NixOS güvenlik duvarı her durumda kapalı tutar). Kill switch açıkken kartlardan sadece şunlar çıkabilir: adres alma (DHCP, IPv6 komşu keşfi), WARP'ın kendi uç noktaları, şifreli DNS sunucuları ve Proton'un uç noktası (kernel WireGuard: `wg show`; Proton protocols / Stealth: etkin VPN bağlantısının ayarlarındaki `"endpoint"`). Gerisi reddedilir ve sayılır (`SKIN KS` → HELD); neyin tutulduğu çekirdek günlüğüne de yazılır, dakikada en fazla 10 satır: `sudo journalctl -k -g skin-ks` (`DST=` hedef, `DPT=` port, `UID=` hangi kullanıcı).
 - **IDENTITY:** MAC, NetworkManager'da **bellekte ve geçici olarak** değişir (`nmcli connection modify --temporary`), diske hiçbir şey yazılmaz. Değişiklik Wi-Fi'ı yeniden bağlar. Normal hâli `privacy.nix`'te: MAC her ağda farklı ve her açılışta yeni; aynı açılış içinde kopup bağlanınca aynı kalır (kafe girişi kaybolmasın diye).
 
 ## Kafede: giriş sayfası
@@ -121,7 +121,7 @@ Proton bağlıyken bekçi WARP yok diye uyarmaz (TUN zaten SEVER). Bitince `sudo
 
 Uç nokta iki yerden okunur, 3 sn'de bir:
 
-- **Proton protocols** (Smart, Wireguard UDP/TCP, Stealth; `proton0` tun aygıtı): etkin VPN bağlantısının ayarlarındaki `"endpoint"` (`nmcli -g vpn.data`). NetworkManager bunu bağlantı daha kurulurken yayımlar, yani Smart'ın Stealth'e geçmesi ya da yeniden bağlanma da kill switch'e takılmaz.
+- **Proton protocols** (Smart, Wireguard UDP/TCP, Stealth; `proton0` tun aygıtı): etkin VPN bağlantısının ayarlarındaki `"endpoint"` (`nmcli -g vpn.data`). NetworkManager bunu bağlantı daha kurulurken yayımlar, yani Smart'ın Stealth'e geçmesi de kill switch'e takılmaz. Görülen uç nokta 2 dk daha açık kalır (`/run/skin/vpn-endpoints`): Proton yeniden bağlanırken bağlantıyı kapatıp yenisini açıyor; arada etkin bağlantı olmadığı anda kural düşerse yeni bağlantının el sıkışması engellenirdi.
 - **Klasik WireGuard:** `wg show all endpoints`.
 
 Sunucu değiştirirken uygulama yeni sunucuya bağlanmadan önce Proton'un API'sine de gidebilir; takılırsa `sudo SKIN SEVER KS` → bağlan → `sudo SKIN SEAL KS`.

@@ -95,6 +95,9 @@ pub fn ruleset(plan: &Plan) -> String {
         if !v6.is_empty() {
             r += &format!("\t\tip6 daddr {{ {} }} accept comment \"skin: vpn endpoints\"\n", join(&v6));
         }
+        // What was held, and by whom: kernel log, at most 10 lines a minute.
+        // sudo journalctl -k -g skin-ks   (DST=, DPT=, UID=)
+        r += "\t\tlimit rate 10/minute log prefix \"skin-ks: \" flags skuid\n";
         r += "\t\tcounter reject with icmpx admin-prohibited comment \"skin: outside the tunnel\"\n";
     }
     r += "\t}\n}\n";
