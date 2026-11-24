@@ -3,6 +3,12 @@
 //! leaving through a physical uplink (Wi-Fi / Ethernet); loopback, tunnels
 //! and everything else pass untouched. Incoming traffic is not touched here:
 //! the NixOS firewall already closes it, in every mode.
+//!
+//! Two chains: "out" for this machine's own traffic and "routed" for traffic
+//! it routes for others -- virtual machines (libvirt NAT, virbr0). Without
+//! "routed" a VM's packets would leave through the uplink untouched by the
+//! kill switch and the LAN layer. "routed" also refuses to route NEW
+//! connections that arrive from an uplink: THORNS is not a router for the LAN.
 
 use crate::model::Mode;
 use crate::net::Net;
@@ -109,7 +115,32 @@ pub fn ruleset(plan: &Plan) -> String {
         r += "\t\tlimit rate 10/minute log prefix \"skin-ks: \" flags skuid\n";
         r += "\t\tcounter reject with icmpx admin-prohibited comment \"skin: outside the tunnel\"\n";
     }
-    r += "\t}\n}\n";
+    r += "\t}\n";
+    r += &forward(plan);
+    r += "}\n";
+    r
+}
+
+/// Routed traffic (VMs): the same LAN + KILLSWITCH layers, without the
+/// host's own exceptions (DHCP, gateway, WARP, DNS): a VM has no business
+/// talking to any of them through the uplink directly. With WARP up the
+/// VM's traffic leaves through the tunnel (not an uplink) and passes.
+fn forward(plan: &Plan) -> String {
+    let uplinks = quote_list(&plan.net.uplinks);
+    let mut r = String::from("\tchain routed {\n\t\ttype filter hook forward priority filter; policy accept;\n");
+    r += &format!("\t\tiifname {{ {uplinks} }} ct state new counter drop comment \"skin: not a router\"\n");
+    r += &format!("\t\toifname != {{ {uplinks} }} accept\n");
+    if plan.lan_open() {
+        r += "\t\tip daddr @lan4 accept\n\t\tip6 daddr @lan6 accept\n";
+    } else {
+        r += "\t\tip daddr @lan4 counter reject with icmpx admin-prohibited comment \"skin: LAN isolated\"\n";
+        r += "\t\tip6 daddr @lan6 counter reject with icmpx admin-prohibited comment \"skin: LAN isolated\"\n";
+    }
+    if plan.ks_armed() {
+        r += "\t\tlimit rate 10/minute log prefix \"skin-ks-fwd: \"\n";
+        r += "\t\tcounter reject with icmpx admin-prohibited comment \"skin: outside the tunnel\"\n";
+    }
+    r += "\t}\n";
     r
 }
 
@@ -198,5 +229,39 @@ mod tests {
         let r = ruleset(&Plan { ks: Mode::Seal, lan: Mode::Sever, net: &n, wg: &wg });
         assert!(r.contains("ip daddr { 185.159.157.10 } accept"));
         assert!(r.contains("ip6 daddr { 2a07:b944::2:2 } accept"));
+    }
+
+    fn routed_chain(r: &str) -> &str {
+        &r[r.find("chain routed").expect("routed chain")..]
+    }
+
+    #[test]
+    fn sealed_vm_traffic_is_held_too() {
+        let n = net(false);
+        let r = ruleset(&Plan { ks: Mode::Seal, lan: Mode::Seal, net: &n, wg: &[] });
+        let f = routed_chain(&r);
+        assert!(f.contains("hook forward"));
+        assert!(f.contains("iifname { \"wlo1\", \"enp46s0\" } ct state new counter drop"));
+        assert!(f.contains("skin: LAN isolated"));
+        assert!(f.contains("log prefix \"skin-ks-fwd: \""));
+        assert!(f.contains("skin: outside the tunnel"));
+        // no host exceptions for VMs
+        assert!(!f.contains("@warp4") && !f.contains("@dns4") && !f.contains("sport 68"));
+    }
+
+    #[test]
+    fn severed_ks_keeps_vm_lan_isolation_only() {
+        let n = net(false);
+        let r = ruleset(&Plan { ks: Mode::Sever, lan: Mode::Seal, net: &n, wg: &[] });
+        let f = routed_chain(&r);
+        assert!(f.contains("skin: LAN isolated"));
+        assert!(!f.contains("skin: outside the tunnel"));
+    }
+
+    #[test]
+    fn rotten_has_no_forward_chain() {
+        let n = net(false);
+        let r = ruleset(&Plan { ks: Mode::Rot, lan: Mode::Rot, net: &n, wg: &[] });
+        assert!(!r.contains("chain routed"));
     }
 }

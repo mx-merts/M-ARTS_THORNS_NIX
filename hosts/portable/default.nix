@@ -47,6 +47,8 @@
     ../../modules/services/printing.nix
     ../../modules/services/flatpak.nix
 
+    ../../modules/virtualisation/vm.nix
+
     ../../modules/programs/base.nix
     ../../modules/programs/shell.nix
     ../../modules/programs/cli-tools.nix

@@ -1,4 +1,4 @@
-# SKIN-0.0.9 — Network Membrane
+# SKIN-0.1.0 — Network Membrane
 
 > THORNS'un derisi: dış dünyayla aradaki zar. Ağ güvenliğinin bütün katmanlarını tek komutla sıkar ya da gevşetir. SPINE güvenliği izler, NERV donanımı; SKIN ağı.
 
@@ -55,6 +55,7 @@ Komut yapısı: **`SKIN <DURUM> [KATMAN..]`**. Katman verilmezse bütün deri de
 - **DNS:** SEAL `dnscrypt-proxy`'yi başlatır, bağlantının DNS ayarını geri yükler (`nmcli device reapply`) ve kartların DNS "varsayılan yol"unu kapatır (`resolvectl default-route <arayüz> false`): NetworkManager her kartı varsayılan yol yapıyor, resolved da sorguları dnscrypt'in yanında modemin (ISP'nin) şifresiz DNS'ine gönderiyordu. Kill switch açıkken bunlar tutuluyordu, kapalıyken sızıyordu. NetworkManager her yeniden bağlanmada ayarı geri açtığı için bekçi 3 sn'de bir kapatır. SEVER/ROT onu durdurur ve sorguları ağın DNS'ine verir (`resolvectl domain <arayüz> ~.`, `default-route true`). Giriş sayfaları ancak böyle açılır: sayfanın adresini sadece ağın DNS'i bilir.
 - **TUNNEL:** `warp-cli connect / disconnect`. Bağlanması en fazla 15 sn beklenir.
 - **KILLSWITCH ve LAN:** tek bir nftables tablosu, `inet skin`. Her değişiklikte bütünüyle, tek işlemde yeniden kurulur. Sadece fiziksel kartlardan (Wi-Fi, Ethernet) **çıkan** trafiğe bakar; tünel, loopback ve gelen trafik ona dokunmaz (gelen bağlantıları NixOS güvenlik duvarı her durumda kapalı tutar). Kill switch açıkken kartlardan sadece şunlar çıkabilir: adres alma (DHCP, IPv6 komşu keşfi), WARP'ın kendi uç noktaları ve bağlantı kontrolleri (üç Cloudflare adresine yalnızca 80. port), şifreli DNS sunucuları ve Proton'un uç noktası (kernel WireGuard: `wg show`; Proton protocols / Stealth: etkin VPN bağlantısının ayarlarındaki `"endpoint"`). Gerisi reddedilir ve sayılır (`SKIN KS` → HELD); neyin tutulduğu çekirdek günlüğüne de yazılır, dakikada en fazla 10 satır: `sudo journalctl -k -g skin-ks` (`DST=` hedef, `DPT=` port, `UID=` hangi kullanıcı).
+- **Sanal makineler (0.1.0):** tablonun ikinci zinciri `routed`, bilgisayarın başkası için **yönlendirdiği** trafiğe bakar: virt-manager / libvirt sanal makineleri (NAT, `virbr0`). Aynı iki katman orada da işler: LAN kapalıysa VM yerel ağa ulaşamaz, kill switch açıkken VM'in trafiği karttan doğrudan çıkamaz (WARP bağlıyken tünelden çıkar). VM'ler için ayrıcalık yok: DHCP, WARP ve DNS istisnaları sadece bilgisayarın kendisi için. Tutulan VM trafiği: `sudo journalctl -k -g skin-ks-fwd`. Ayrıca kartlardan **gelen** yeni bağlantılar hiçbir zaman yönlendirilmez (`skin: not a router`): libvirt yönlendirmeyi açınca okul ağındaki biri THORNS'u yönlendirici olarak kullanamasın. ROT'ta bu zincir de yoktur.
 - **IDENTITY:** MAC, NetworkManager'da **bellekte ve geçici olarak** değişir (`nmcli connection modify --temporary`), diske hiçbir şey yazılmaz. Değişiklik Wi-Fi'ı yeniden bağlar. Normal hâli `privacy.nix`'te: MAC her ağda farklı ve her açılışta yeni; aynı açılış içinde kopup bağlanınca aynı kalır (kafe girişi kaybolmasın diye).
 
 ## Kafede: giriş sayfası
@@ -139,7 +140,7 @@ Kitty'de başlık **ᛊᛕᛁȠ** olarak çizilir: ᛊ (rün sowilo), ᛕ (rün,
 | `package.nix` | Rust paketi; çalışma anı araçları (nft, nmcli, ip, warp-cli, wg, resolvectl, notify-send) |
 | `source/src/main.rs` | Komut satırı ve durum değişikliği |
 | `source/src/layers.rs` | Her katmanın SEAL / SEVER / ROT adımları ve sırası |
-| `source/src/firewall.rs` | `inet skin` tablosu: KILLSWITCH ve LAN kuralları |
+| `source/src/firewall.rs` | `inet skin` tablosu: KILLSWITCH ve LAN kuralları (`out`: bilgisayarın kendisi, `routed`: sanal makineler) |
 | `source/src/net.rs` | Ağın şu anki hâli: kart, SSID, modem, WARP, MAC |
 | `source/src/watch.rs` | Bekçi (`skin-watch`) |
 | `source/src/notify.rs` | Bildirimler (`skin-notify`) |
