@@ -19,6 +19,7 @@
 
     # Sistem/dosya bilgisi
     dust          # klasor boyutlari (du yerine)
+    ncdu          # diski gezip temizleme (d = sil)
     duf           # disk durumu (df yerine)
     procs         # surec listesi (ps yerine)
 

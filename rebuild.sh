@@ -270,6 +270,37 @@ echo ""
 echo "Booted: ${SPEC:-DESK (base)}"
 
 # ── Optional update ──────────────────────────────────────────────────────────
+# One quiet try of the whole update. If GitHub does not answer for one input
+# (24 Nov 2026: 504 on Elegant-grub2-themes, plus ~250 lines of HTML error
+# page in the log), the inputs are updated one by one and the ones that do
+# not answer are skipped: the rest still gets updated, no waiting. nix's own
+# output goes to a temp file; only "Updated input" lines and one short line
+# per failure are shown. Skipped inputs: $SKIPPED (shown in the summary).
+SKIPPED=""
+flake_update() {
+  local log i err ok=0
+  log="$(mktemp)"
+  if nix flake update --flake /etc/nixos >"$log" 2>&1; then
+    grep -v "^warning: Git tree" "$log"
+    rm -f "$log"
+    return 0
+  fi
+  err="$(grep -o "HTTP error [0-9]*" "$log" | head -n1)"
+  echo ">>> Full update failed (${err:-see: nix flake update}). Updating inputs one by one:"
+  for i in $(nix eval --raw --impure --expr 'builtins.concatStringsSep " " (builtins.attrNames (builtins.fromJSON (builtins.readFile /etc/nixos/flake.lock)).nodes.root.inputs)'); do
+    if nix flake update --flake /etc/nixos "$i" >"$log" 2>&1; then
+      echo "  + $i"
+      ok=1
+    else
+      err="$(grep -o "HTTP error [0-9]*" "$log" | head -n1)"
+      echo "  - $i  skipped (${err:-no answer})"
+      SKIPPED="$SKIPPED $i"
+    fi
+  done
+  rm -f "$log"
+  [ "$ok" = 1 ]
+}
+
 # Runs inside the rebuild lock (flake.lock is shared with thorns-upgrade).
 # Enter = skip: the rebuild uses exactly the versions already in flake.lock.
 echo ""
@@ -282,7 +313,7 @@ if ask "Update packages before building?"; then
   cp -f /etc/nixos/flake.lock "$LOCK_BACKUP"
   echo ""
   echo "--- nix flake update ---"
-  if nix flake update --flake /etc/nixos; then
+  if flake_update; then
     git -C /etc/nixos add flake.lock
     if cmp -s "$LOCK_BACKUP" /etc/nixos/flake.lock; then
       UPDATE_RESULT="flake: already up to date"
@@ -291,6 +322,7 @@ if ask "Update packages before building?"; then
     else
       UPDATE_RESULT="flake: updated"
     fi
+    [ -n "$SKIPPED" ] && UPDATE_RESULT="${UPDATE_RESULT} (skipped:${SKIPPED})"
   else
     # No internet / GitHub rate limit etc.: put the old lock back right away
     # and carry on with the current versions.
